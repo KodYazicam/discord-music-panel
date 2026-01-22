@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #5865F2 #2C2F33;
+  }
+  
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  *::-webkit-scrollbar-track {
+    background: #2C2F33;
+    border-radius: 4px;
+  }
+  
+  *::-webkit-scrollbar-thumb {
+    background: #5865F2;
+    border-radius: 4px;
+  }
+  
+  *::-webkit-scrollbar-thumb:hover {
+    background: #4752C4;
+  }
+
+  body {
+    @apply bg-discord-darker text-discord-text antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply bg-discord-primary hover:bg-opacity-80 text-white;
+  }
+  
+  .btn-secondary {
+    @apply bg-discord-light hover:bg-discord-lightest text-discord-text;
+  }
+  
+  .btn-danger {
+    @apply bg-discord-red hover:bg-opacity-80 text-white;
+  }
+  
+  .btn-success {
+    @apply bg-discord-green hover:bg-opacity-80 text-white;
+  }
+  
+  .card {
+    @apply bg-discord-light rounded-lg p-4 shadow-lg;
+  }
+  
+  .input {
+    @apply w-full px-4 py-2 bg-discord-darker border border-discord-lightest rounded-md text-discord-text placeholder-discord-muted focus:outline-none focus:border-discord-primary transition-colors;
+  }
+  
+  .label {
+    @apply block text-sm font-medium text-discord-text mb-1;
+  }
+  
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-discord-muted hover:bg-discord-lightest hover:text-discord-text transition-colors cursor-pointer;
+  }
+  
+  .sidebar-item.active {
+    @apply bg-discord-primary bg-opacity-20 text-discord-primary;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+  }
+  
+  .badge-online {
+    @apply bg-discord-green bg-opacity-20 text-discord-green;
+  }
+  
+  .badge-offline {
+    @apply bg-discord-red bg-opacity-20 text-discord-red;
+  }
+  
+  .badge-idle {
+    @apply bg-discord-yellow bg-opacity-20 text-discord-yellow;
+  }
+  
+  .table {
+    @apply w-full text-left;
+  }
+  
+  .table th {
+    @apply px-4 py-3 bg-discord-darker text-discord-muted text-sm font-medium uppercase tracking-wider;
+  }
+  
+  .table td {
+    @apply px-4 py-3 border-t border-discord-lightest;
+  }
+  
+  .table tr:hover td {
+    @apply bg-discord-lightest bg-opacity-50;
+  }
+  
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+  }
+  
+  .modal-content {
+    @apply bg-discord-light rounded-lg p-6 w-full max-w-md shadow-xl;
+  }
+  
+  .progress-bar {
+    @apply h-2 bg-discord-darker rounded-full overflow-hidden;
+  }
+  
+  .progress-bar-fill {
+    @apply h-full bg-discord-primary transition-all duration-300;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-discord-primary to-discord-fuchsia bg-clip-text text-transparent;
+  }
+  
+  .animate-music {
+    animation: music-bars 0.5s ease infinite alternate;
+  }
+  
+  @keyframes music-bars {
+    0% { transform: scaleY(0.3); }
+    100% { transform: scaleY(1); }
+  }
+  
+  .glass {
+    @apply bg-discord-light bg-opacity-80 backdrop-blur-md;
+  }
+}
