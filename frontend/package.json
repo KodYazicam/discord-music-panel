@@ -5,10 +5,10 @@
   "type": "module",
   "description": "Web dashboard for Discord Music Bot Management Panel",
   "author": {
-    "name": "VelesLobo",
-    "url": "https://github.com/Veleslobo"
+    "name": "KodYazicam",
+    "url": "https://github.com/KodYazicam"
   },
-  "homepage": "https://github.com/Veleslobo/discord-music-panel",
+  "homepage": "https://github.com/KodYazicam/discord-music-panel",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

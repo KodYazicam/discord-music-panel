@@ -268,7 +268,7 @@ class MusicQueue {
         }
         
         // Emit update
-        this.io.emit('queue:trackAdded', {
+        this.io?.emit('queue:trackAdded', {
             botId: this.config.id,
             guildId: this.guildId,
             track,

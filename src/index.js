@@ -19,6 +19,14 @@ const { Logger } = require('./utils/Logger');
 
 const logger = new Logger('Main');
 
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes('change-this') || process.env.JWT_SECRET === 'your-super-secret-jwt-key-change-this-in-production') {
+    if (process.env.NODE_ENV === 'production') {
+        logger.error('Set a real JWT_SECRET before starting in production.');
+        process.exit(1);
+    }
+    logger.warn('JWT_SECRET is using a default value. Set a strong secret in .env.');
+}
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {

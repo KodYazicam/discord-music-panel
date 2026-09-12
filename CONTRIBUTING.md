@@ -4,8 +4,8 @@ Thank you for considering contributing to Discord Music Panel! 🎵
 
 ## 👤 Author
 
-**VelesLobo**
-- 🐙 GitHub: [@Veleslobo](https://github.com/Veleslobo)
+**KodYazicam**
+- 🐙 GitHub: [@KodYazicam](https://github.com/KodYazicam)
 - 📸 Instagram: [@4veles](https://instagram.com/4veles)
 
 ## 🤝 How to Contribute
@@ -13,7 +13,7 @@ Thank you for considering contributing to Discord Music Panel! 🎵
 ### Reporting Bugs
 
 If you find a bug, please open an issue at:
-https://github.com/Veleslobo/discord-music-panel/issues
+https://github.com/KodYazicam/discord-music-panel/issues
 
 Include:
 - A clear description of the bug

@@ -3,6 +3,7 @@
  * Stores bot configurations, users, playlists, and statistics
  */
 
+const fs = require('fs');
 const Database = require('better-sqlite3');
 const path = require('path');
 const { Logger } = require('../utils/Logger');
@@ -15,8 +16,13 @@ let db = null;
  * Initialize the database with all required tables
  */
 function initDatabase() {
-    const dbPath = path.join(__dirname, '../../data/music-panel.db');
-    
+    const dataDir = path.join(__dirname, '../../data');
+    fs.mkdirSync(dataDir, { recursive: true });
+    const dbPath = process.env.DATABASE_PATH
+        ? path.resolve(process.env.DATABASE_PATH)
+        : path.join(dataDir, 'music-panel.db');
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+
     db = new Database(dbPath);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');

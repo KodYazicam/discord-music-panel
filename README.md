@@ -3,9 +3,9 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/node-18%2B-green.svg)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blurple.svg)
-![Author](https://img.shields.io/badge/Author-VelesLobo-purple.svg)
+![Author](https://img.shields.io/badge/Author-KodYazicam-purple.svg)
 
-**Created by [VelesLobo](https://github.com/Veleslobo)** | [Instagram: @4veles](https://instagram.com/4veles)
+**Created by [KodYazicam](https://github.com/KodYazicam)** | [Instagram: @4veles](https://instagram.com/4veles)
 
 Multi-instance Discord music bot management panel. Run 1-100+ bots with different prefixes from a single dashboard.
 
@@ -55,7 +55,7 @@ Multi-instance Discord music bot management panel. Run 1-100+ bots with differen
 
 ```bash
 # Clone the repository
-git clone https://github.com/Veleslobo/discord-music-panel.git
+git clone https://github.com/KodYazicam/discord-music-panel.git
 cd discord-music-panel
 
 # Install backend dependencies
@@ -1063,9 +1063,9 @@ const navigation = [
 
 ## 👤 Author
 
-**VelesLobo**
+**KodYazicam**
 
-- 🐙 GitHub: [@Veleslobo](https://github.com/Veleslobo)
+- 🐙 GitHub: [@KodYazicam](https://github.com/KodYazicam)
 - 📸 Instagram: [@4veles](https://instagram.com/4veles)
 
 ---
@@ -1076,4 +1076,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-**Repository:** [https://github.com/Veleslobo/discord-music-panel](https://github.com/Veleslobo/discord-music-panel)
+**Repository:** [https://github.com/KodYazicam/discord-music-panel](https://github.com/KodYazicam/discord-music-panel)

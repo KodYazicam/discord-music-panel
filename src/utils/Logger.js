@@ -2,8 +2,12 @@
  * Logger Utility - Winston-based logging system
  */
 
+const fs = require('fs');
 const winston = require('winston');
 const path = require('path');
+
+const logsDir = path.join(__dirname, '../../logs');
+fs.mkdirSync(logsDir, { recursive: true });
 
 const { format, transports } = winston;
 

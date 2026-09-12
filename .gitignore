@@ -9,6 +9,7 @@ frontend/node_modules/
 
 # Database
 data/
+!data/.gitkeep
 *.sqlite
 *.sqlite3
 *.db
@@ -20,6 +21,7 @@ build/
 
 # Logs
 logs/
+!logs/.gitkeep
 *.log
 npm-debug.log*
 
