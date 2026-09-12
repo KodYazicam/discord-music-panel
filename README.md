@@ -79,16 +79,18 @@ cp .env.example .env
 Create `.env` in the root directory:
 
 ```env
-PORT=3000
+PORT=4000
 NODE_ENV=development
 JWT_SECRET=your-secret-key-minimum-32-characters
 DATABASE_PATH=./data/database.sqlite
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:3000
 ```
+
+Install **ffmpeg** on the host. Voice playback also needs `libsodium-wrappers` (already in package.json).
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
-| `PORT` | Backend server port | `3000` | No |
+| `PORT` | Backend server port | `4000` | No |
 | `NODE_ENV` | Environment mode (`development`/`production`) | `development` | No |
 | `JWT_SECRET` | Secret key for JWT authentication (min 32 chars) | - | **Yes** |
 | `DATABASE_PATH` | SQLite database file location | `./data/database.sqlite` | No |

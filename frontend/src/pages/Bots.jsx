@@ -24,6 +24,7 @@ function Bots() {
   const [newBot, setNewBot] = useState({
     name: '',
     token: '',
+    clientId: '',
     prefix: '!',
     prefixType: 'text'
   })
@@ -50,7 +51,7 @@ function Bots() {
     
     if (result.success) {
       setShowCreateModal(false)
-      setNewBot({ name: '', token: '', prefix: '!', prefixType: 'text' })
+      setNewBot({ name: '', token: '', clientId: '', prefix: '!', prefixType: 'text' })
     } else {
       setCreateError(result.error)
     }
@@ -291,8 +292,19 @@ function Bots() {
                   required
                 />
                 <p className="text-xs text-discord-muted mt-1">
-                  Get this from Discord Developer Portal
+                  Get this from Discord Developer Portal. Client ID is derived from the token if left blank.
                 </p>
+              </div>
+
+              <div>
+                <label className="label">Application / Client ID (optional)</label>
+                <input
+                  type="text"
+                  value={newBot.clientId}
+                  onChange={(e) => setNewBot({ ...newBot, clientId: e.target.value })}
+                  className="input"
+                  placeholder="Leave empty to detect from token"
+                />
               </div>
 
               <div>

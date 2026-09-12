@@ -183,10 +183,32 @@ function setupRoutes(app) {
         try {
             const { name, token, clientId, prefix, prefixType, autoStart } = req.body;
 
-            if (!name || !token || !clientId) {
+            if (!name || !token) {
                 return res.status(400).json({ 
                     success: false, 
-                    error: 'Name, token, and clientId are required' 
+                    error: 'Name and token are required' 
+                });
+            }
+
+            let resolvedClientId = clientId;
+            if (!resolvedClientId) {
+                try {
+                    const tokenRes = await fetch('https://discord.com/api/v10/oauth2/applications/@me', {
+                        headers: { Authorization: `Bot ${token}` }
+                    });
+                    if (tokenRes.ok) {
+                        const app = await tokenRes.json();
+                        resolvedClientId = app.id;
+                    }
+                } catch (error) {
+                    logger.warn('Could not derive clientId from token:', error.message);
+                }
+            }
+
+            if (!resolvedClientId) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'clientId is required (or the bot token must be valid so it can be derived)'
                 });
             }
 
@@ -194,7 +216,7 @@ function setupRoutes(app) {
             const result = await botManager.createBot({
                 name,
                 token,
-                clientId,
+                clientId: resolvedClientId,
                 prefix: prefix || '!',
                 prefixType: prefixType || 'text',
                 autoStart: autoStart || false,

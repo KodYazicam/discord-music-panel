@@ -42,8 +42,8 @@ class BotManager {
             logger.info(`Bot created: ${config.name} (${botId}) with prefix "${config.prefix}"`);
             
             this.emitBotUpdate(botId, 'created');
-            
-            return { success: true, botId, message: 'Bot created successfully' };
+            const bot = botOperations.getById(botId);
+            return { success: true, botId, bot, message: 'Bot created successfully' };
         } catch (error) {
             logger.error(`Failed to create bot: ${error.message}`);
             throw error;

@@ -19,12 +19,25 @@ const { Logger } = require('./utils/Logger');
 
 const logger = new Logger('Main');
 
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET.includes('change-this') || process.env.JWT_SECRET === 'your-super-secret-jwt-key-change-this-in-production') {
+function isWeakSecret(value, placeholders) {
+    if (!value) return true;
+    return placeholders.some((item) => value === item || value.includes(item));
+}
+
+if (isWeakSecret(process.env.JWT_SECRET, ['change-this', 'your-super-secret-jwt-key-change-this-in-production', 'discord-music-panel-jwt-secret'])) {
     if (process.env.NODE_ENV === 'production') {
         logger.error('Set a real JWT_SECRET before starting in production.');
         process.exit(1);
     }
     logger.warn('JWT_SECRET is using a default value. Set a strong secret in .env.');
+}
+
+if (isWeakSecret(process.env.SESSION_SECRET, ['your-session-secret-key', 'discord-music-panel-secret'])) {
+    if (process.env.NODE_ENV === 'production') {
+        logger.error('Set a real SESSION_SECRET before starting in production.');
+        process.exit(1);
+    }
+    logger.warn('SESSION_SECRET is using a default value. Set a strong secret in .env.');
 }
 
 const app = express();

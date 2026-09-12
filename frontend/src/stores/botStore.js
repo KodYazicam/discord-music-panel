@@ -45,11 +45,15 @@ export const useBotStore = create((set, get) => ({
     try {
       const response = await api.post('/bots', botData)
       const newBot = response.data.bot
-      set((state) => ({ 
-        bots: [...state.bots, newBot], 
-        isLoading: false 
-      }))
-      return { success: true, bot: newBot }
+      if (newBot) {
+        set((state) => ({
+          bots: [...state.bots.filter(Boolean), newBot],
+          isLoading: false
+        }))
+        return { success: true, bot: newBot }
+      }
+      await get().fetchBots()
+      return { success: true }
     } catch (error) {
       set({ 
         error: error.response?.data?.error || 'Failed to create bot', 

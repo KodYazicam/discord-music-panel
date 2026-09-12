@@ -55,6 +55,7 @@ class MusicBot {
         
         // Voice connections per guild
         this.connections = new Map(); // guildId -> VoiceConnection
+        this.skipAdvance = new Set();
 
         // Statistics
         this.stats = {
@@ -710,6 +711,12 @@ class MusicBot {
         const queue = this.queues.get(guildId);
         if (!queue) return;
 
+        if (this.skipAdvance.has(guildId)) {
+            this.skipAdvance.delete(guildId);
+            this.startPlayback(guildId, textChannel);
+            return;
+        }
+
         // Update playtime stats
         if (queue.currentTrack && queue.startTime) {
             const playtime = Math.floor((Date.now() - queue.startTime) / 1000);
@@ -1002,7 +1009,8 @@ class MusicBot {
             return { success: false, message: 'Invalid track index' };
         }
 
-        player.stop(); // This will trigger handleTrackEnd which will play the new current track
+        this.skipAdvance.add(guildId);
+        player.stop();
         
         return { success: true, message: 'Jumped to track' };
     }
