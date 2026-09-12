@@ -74,6 +74,17 @@ cd ..
 cp .env.example .env
 ```
 
+### Docker (production-style)
+
+```bash
+cp .env.example .env
+# set JWT_SECRET and SESSION_SECRET to long random values
+docker compose up --build
+# dashboard: http://localhost:4000
+```
+
+The image includes Node, ffmpeg, and yt-dlp. SQLite lives in the `panel-data` volume. First open `/register` — that user becomes admin.
+
 ---
 
 ## ⚙️ Configuration
