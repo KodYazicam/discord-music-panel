@@ -42,6 +42,13 @@ function initDatabase() {
         )
     `);
 
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS panel_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    `);
+
     // Bots table - All registered bot instances
     db.exec(`
         CREATE TABLE IF NOT EXISTS bots (
@@ -440,6 +447,31 @@ const userOperations = {
 
     getAll: () => {
         return db.prepare('SELECT id, username, email, role, created_at, last_login FROM users').all();
+    },
+
+    count: () => {
+        return db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+    },
+
+    setRole: (id, role) => {
+        return db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, id);
+    },
+
+    delete: (id) => {
+        return db.prepare('DELETE FROM users WHERE id = ?').run(id);
+    }
+};
+
+const settingOperations = {
+    get: (key, fallback = null) => {
+        const row = db.prepare('SELECT value FROM panel_settings WHERE key = ?').get(key);
+        return row ? row.value : fallback;
+    },
+    set: (key, value) => {
+        db.prepare(`
+            INSERT INTO panel_settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        `).run(key, value);
     }
 };
 
@@ -452,5 +484,6 @@ module.exports = {
     statisticsOperations,
     playlistOperations,
     logOperations,
-    userOperations
+    userOperations,
+    settingOperations
 };

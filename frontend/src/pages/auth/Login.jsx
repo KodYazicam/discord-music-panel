@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
+import api from '../../utils/api'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 function Login() {
@@ -9,7 +10,14 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [registrationOpen, setRegistrationOpen] = useState(false)
   const { login } = useAuthStore()
+
+  useEffect(() => {
+    api.get('/auth/registration')
+      .then((res) => setRegistrationOpen(Boolean(res.data.open)))
+      .catch(() => setRegistrationOpen(false))
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -98,12 +106,14 @@ function Login() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-discord-muted text-sm">
-        Don't have an account?{' '}
-        <Link to="/register" className="text-discord-primary hover:underline">
-          Sign up
-        </Link>
-      </p>
+      {registrationOpen && (
+        <p className="mt-6 text-center text-discord-muted text-sm">
+          Don't have an account?{' '}
+          <Link to="/register" className="text-discord-primary hover:underline">
+            Sign up
+          </Link>
+        </p>
+      )}
     </div>
   )
 }

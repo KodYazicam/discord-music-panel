@@ -3,7 +3,7 @@
  */
 
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
-const play = require('play-dl');
+const ytdlp = require('../../ytdlp');
 
 module.exports = {
     name: 'search',
@@ -48,7 +48,7 @@ module.exports = {
 
         try {
             // Search for tracks
-            const results = await play.search(query, { limit: 10 });
+            const results = await ytdlp.resolveQuery(query, 10);
 
             if (!results || results.length === 0) {
                 return loadingMsg.edit({
@@ -66,7 +66,7 @@ module.exports = {
                 .setTitle('🔍 Search Results')
                 .setDescription(
                     results.map((track, i) => 
-                        `**${i + 1}.** [${track.title}](${track.url}) - ${track.durationRaw}`
+                        `**${i + 1}.** [${track.title}](${track.url}) - ${track.durationFormatted}`
                     ).join('\n')
                 )
                 .setFooter({ text: 'Select a track from the menu below' });
@@ -78,7 +78,7 @@ module.exports = {
                 .addOptions(
                     results.map((track, i) => ({
                         label: track.title.slice(0, 100),
-                        description: `${track.durationRaw} - ${track.channel?.name || 'Unknown'}`.slice(0, 100),
+                        description: `${track.durationFormatted} - ${track.author || 'Unknown'}`.slice(0, 100),
                         value: track.url
                     }))
                 );

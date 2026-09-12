@@ -511,7 +511,7 @@ class MusicBot {
 
         // Search and add track
         try {
-            const tracks = await queue.search(query, this.config.defaultSearchEngine);
+            const tracks = await queue.search(query);
             
             if (!tracks || tracks.length === 0) {
                 return { success: false, message: 'No tracks found' };

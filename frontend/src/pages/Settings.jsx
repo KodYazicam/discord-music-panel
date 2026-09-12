@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuthStore } from '../stores/authStore'
+import api from '../utils/api'
 import {
   Settings as SettingsIcon,
   User,
@@ -9,11 +10,12 @@ import {
   Save,
   Eye,
   EyeOff,
-  Check
+  Check,
+  Users
 } from 'lucide-react'
 
 function Settings() {
-  const { user, updateProfile, changePassword } = useAuthStore()
+  const { user } = useAuthStore()
   
   const [activeTab, setActiveTab] = useState('profile')
   const [profileData, setProfileData] = useState({
@@ -37,6 +39,24 @@ function Settings() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState('')
   const [saveError, setSaveError] = useState('')
+  const [users, setUsers] = useState([])
+  const [registrationOpen, setRegistrationOpen] = useState(false)
+  const [newUser, setNewUser] = useState({ username: '', email: '', password: '', role: 'user' })
+
+  const loadUsers = async () => {
+    if (user?.role !== 'admin') return
+    try {
+      const res = await api.get('/users')
+      setUsers(res.data.users || [])
+      setRegistrationOpen(Boolean(res.data.registrationOpen))
+    } catch {
+      setSaveError('Failed to load users')
+    }
+  }
+
+  useEffect(() => {
+    loadUsers()
+  }, [user?.role])
 
   const handleSaveProfile = async (e) => {
     e.preventDefault()
@@ -79,9 +99,53 @@ function Settings() {
     setTimeout(() => setSaveSuccess(''), 3000)
   }
 
+  const toggleRegistration = async () => {
+    try {
+      const res = await api.post('/settings/registration', { open: !registrationOpen })
+      setRegistrationOpen(Boolean(res.data.registrationOpen))
+      setSaveSuccess(res.data.registrationOpen ? 'Registration is open' : 'Registration is closed')
+      setTimeout(() => setSaveSuccess(''), 3000)
+    } catch (error) {
+      setSaveError(error.response?.data?.error || 'Failed to update registration')
+    }
+  }
+
+  const createUser = async (e) => {
+    e.preventDefault()
+    setSaveError('')
+    try {
+      await api.post('/users', newUser)
+      setNewUser({ username: '', email: '', password: '', role: 'user' })
+      await loadUsers()
+      setSaveSuccess('User created')
+      setTimeout(() => setSaveSuccess(''), 3000)
+    } catch (error) {
+      setSaveError(error.response?.data?.error || 'Failed to create user')
+    }
+  }
+
+  const setUserRole = async (id, role) => {
+    try {
+      await api.patch(`/users/${id}`, { role })
+      await loadUsers()
+    } catch (error) {
+      setSaveError(error.response?.data?.error || 'Failed to update role')
+    }
+  }
+
+  const removeUser = async (id) => {
+    try {
+      await api.delete(`/users/${id}`)
+      await loadUsers()
+    } catch (error) {
+      setSaveError(error.response?.data?.error || 'Failed to delete user')
+    }
+  }
+
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'security', label: 'Security', icon: Lock },
+    ...(user?.role === 'admin' ? [{ id: 'users', label: 'Users', icon: Users }] : []),
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'appearance', label: 'Appearance', icon: Palette }
   ]
@@ -299,6 +363,50 @@ function Settings() {
           )}
 
           {/* Appearance Tab */}
+          {activeTab === 'users' && user?.role === 'admin' && (
+            <div className="card space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">Panel users</h2>
+                  <p className="text-sm text-discord-muted">First account is always admin. Later signups only work when you open registration.</p>
+                </div>
+                <button onClick={toggleRegistration} className="btn btn-secondary">
+                  {registrationOpen ? 'Close registration' : 'Open registration'}
+                </button>
+              </div>
+
+              <form onSubmit={createUser} className="grid gap-3 sm:grid-cols-2">
+                <input className="input" placeholder="Username" value={newUser.username} onChange={(e) => setNewUser({ ...newUser, username: e.target.value })} required />
+                <input className="input" placeholder="Email" type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
+                <input className="input" placeholder="Password" type="password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} required />
+                <select className="input" value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button type="submit" className="btn btn-primary sm:col-span-2">Create user</button>
+              </form>
+
+              <div className="space-y-2">
+                {users.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-discord-lightest">
+                    <div>
+                      <p className="text-white font-medium">{item.username}</p>
+                      <p className="text-xs text-discord-muted">{item.email || 'no email'} · {item.role}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      {item.role === 'admin' ? (
+                        <button className="btn btn-secondary" onClick={() => setUserRole(item.id, 'user')}>Demote</button>
+                      ) : (
+                        <button className="btn btn-secondary" onClick={() => setUserRole(item.id, 'admin')}>Make admin</button>
+                      )}
+                      <button className="btn btn-danger" onClick={() => removeUser(item.id)}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'appearance' && (
             <div className="card">
               <h2 className="text-lg font-semibold text-white mb-4">Appearance</h2>

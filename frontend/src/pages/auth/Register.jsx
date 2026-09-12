@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
+import api from '../../utils/api'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 
 function Register() {
@@ -11,7 +12,19 @@ function Register() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [closed, setClosed] = useState(false)
   const { register } = useAuthStore()
+
+  useEffect(() => {
+    api.get('/auth/registration')
+      .then((res) => {
+        if (!res.data.open) {
+          setClosed(true)
+          setError('Registration is closed. Ask an admin to open it.')
+        }
+      })
+      .catch(() => setClosed(true))
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -24,6 +37,11 @@ function Register() {
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters')
+      return
+    }
+
+    if (closed) {
+      setError('Registration is closed.')
       return
     }
 
@@ -129,7 +147,7 @@ function Register() {
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || closed}
           className="btn btn-primary w-full flex items-center justify-center gap-2"
         >
           {isLoading ? (

@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { Logger } = require('../utils/Logger');
-const { userOperations, botOperations, statisticsOperations, playlistOperations, guildOperations } = require('../database/db');
+const { userOperations, botOperations, statisticsOperations, playlistOperations, guildOperations, settingOperations } = require('../database/db');
 
 const logger = new Logger('API');
 
@@ -37,6 +37,19 @@ function setupRoutes(app) {
         }
     };
 
+    const adminMiddleware = (req, res, next) => {
+        if (req.user?.role !== 'admin') {
+            return res.status(403).json({ success: false, error: 'Admin only' });
+        }
+        next();
+    };
+
+    const registrationOpen = () => {
+        const users = userOperations.count();
+        if (users === 0) return true;
+        return settingOperations.get('registration_open', '0') === '1';
+    };
+
     // ==================== Auth Routes ====================
 
     /**
@@ -50,18 +63,24 @@ function setupRoutes(app) {
                 return res.status(400).json({ success: false, error: 'Username and password required' });
             }
 
-            // Check if user exists
+            if (!registrationOpen()) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Registration is closed. Ask an admin to open it from Settings → Users.'
+                });
+            }
+
             const existing = userOperations.getByUsername(username);
             if (existing) {
                 return res.status(400).json({ success: false, error: 'Username already exists' });
             }
 
-            // Hash password
             const hashedPassword = await bcrypt.hash(password, 10);
-            
-            // Create user (first user is admin)
             const users = userOperations.getAll();
             const role = users.length === 0 ? 'admin' : 'user';
+            if (users.length === 0) {
+                settingOperations.set('registration_open', '0');
+            }
             
             const userId = userOperations.create(username, hashedPassword, email, role);
 
@@ -139,6 +158,79 @@ function setupRoutes(app) {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
         res.json({ success: true, user });
+    });
+
+    router.get('/auth/registration', (_req, res) => {
+        res.json({
+            success: true,
+            open: registrationOpen(),
+            needsSetup: userOperations.count() === 0
+        });
+    });
+
+    router.get('/users', authMiddleware, adminMiddleware, (_req, res) => {
+        res.json({
+            success: true,
+            users: userOperations.getAll(),
+            registrationOpen: settingOperations.get('registration_open', '0') === '1'
+        });
+    });
+
+    router.post('/users', authMiddleware, adminMiddleware, async (req, res) => {
+        try {
+            const { username, password, email, role } = req.body;
+            if (!username || !password) {
+                return res.status(400).json({ success: false, error: 'Username and password required' });
+            }
+            if (userOperations.getByUsername(username)) {
+                return res.status(400).json({ success: false, error: 'Username already exists' });
+            }
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const id = userOperations.create(username, hashedPassword, email || '', role === 'admin' ? 'admin' : 'user');
+            res.json({ success: true, user: userOperations.getById(id) });
+        } catch (error) {
+            logger.error('Create user error:', error);
+            res.status(500).json({ success: false, error: 'Failed to create user' });
+        }
+    });
+
+    router.patch('/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+        const id = Number(req.params.id);
+        const user = userOperations.getById(id);
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+        if (req.body.role) {
+            if (user.role === 'admin' && req.body.role !== 'admin') {
+                const admins = userOperations.getAll().filter((u) => u.role === 'admin');
+                if (admins.length <= 1) {
+                    return res.status(400).json({ success: false, error: 'Cannot demote the last admin' });
+                }
+            }
+            userOperations.setRole(id, req.body.role === 'admin' ? 'admin' : 'user');
+        }
+        res.json({ success: true, user: userOperations.getById(id) });
+    });
+
+    router.delete('/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+        const id = Number(req.params.id);
+        if (id === req.user.id) {
+            return res.status(400).json({ success: false, error: 'You cannot delete your own account' });
+        }
+        const user = userOperations.getById(id);
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+        if (user.role === 'admin') {
+            const admins = userOperations.getAll().filter((u) => u.role === 'admin');
+            if (admins.length <= 1) {
+                return res.status(400).json({ success: false, error: 'Cannot delete the last admin' });
+            }
+        }
+        userOperations.delete(id);
+        res.json({ success: true });
+    });
+
+    router.post('/settings/registration', authMiddleware, adminMiddleware, (req, res) => {
+        const open = Boolean(req.body.open);
+        settingOperations.set('registration_open', open ? '1' : '0');
+        res.json({ success: true, registrationOpen: open });
     });
 
     // ==================== Bot Routes ====================

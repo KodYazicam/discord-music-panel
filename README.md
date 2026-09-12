@@ -86,7 +86,9 @@ DATABASE_PATH=./data/database.sqlite
 FRONTEND_URL=http://localhost:3000
 ```
 
-Install **ffmpeg** on the host. Voice playback also needs `libsodium-wrappers` (already in package.json).
+Install **ffmpeg** and **yt-dlp** on the host (`pipx install yt-dlp`). Voice playback also needs `libsodium-wrappers` (already in package.json).
+
+The first registered user becomes admin. After that, registration stays closed until an admin opens it from **Settings → Users**.
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|

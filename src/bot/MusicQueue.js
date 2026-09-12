@@ -3,9 +3,8 @@
  * Handles track searching, queueing, and playback state
  */
 
-const play = require('play-dl');
 const { createAudioResource, StreamType } = require('@discordjs/voice');
-const { EmbedBuilder } = require('discord.js');
+const ytdlp = require('./ytdlp');
 
 class MusicQueue {
     constructor(guildId, config, io, logger) {
@@ -34,6 +33,7 @@ class MusicQueue {
         
         // Resource reference for volume control
         this.currentResource = null;
+        this.currentProcess = null;
     }
 
     /**
@@ -42,17 +42,10 @@ class MusicQueue {
      * @param {string} engine - Search engine (youtube, soundcloud, spotify)
      * @returns {Array} Array of track objects
      */
-    async search(query, engine = 'youtube') {
+    async search(query) {
         try {
-            // Check if it's a URL
-            const urlType = await play.validate(query);
-            
-            if (urlType) {
-                return await this.handleUrl(query, urlType);
-            }
-            
-            // It's a search query
-            return await this.searchQuery(query, engine);
+            const limit = /^https?:\/\//i.test(query) ? this.config.maxQueueSize || 50 : 1;
+            return await ytdlp.resolveQuery(query, limit);
         } catch (error) {
             this.logger.error('Search error:', error);
             throw error;
@@ -61,158 +54,6 @@ class MusicQueue {
 
     /**
      * Handle URL (YouTube, Spotify, SoundCloud)
-     */
-    async handleUrl(url, type) {
-        const tracks = [];
-
-        switch (type) {
-            case 'yt_video': {
-                const info = await play.video_info(url);
-                tracks.push(this.formatYouTubeTrack(info.video_details));
-                break;
-            }
-            
-            case 'yt_playlist': {
-                const playlist = await play.playlist_info(url, { incomplete: true });
-                const videos = await playlist.all_videos();
-                
-                for (const video of videos.slice(0, this.config.maxQueueSize)) {
-                    tracks.push(this.formatYouTubeTrack(video));
-                }
-                break;
-            }
-            
-            case 'sp_track': {
-                // Spotify track - search on YouTube
-                if (play.is_expired()) {
-                    await play.refreshToken();
-                }
-                const sp = await play.spotify(url);
-                const searchResult = await play.search(`${sp.name} ${sp.artists[0].name}`, { limit: 1 });
-                if (searchResult.length > 0) {
-                    tracks.push(this.formatYouTubeTrack(searchResult[0]));
-                }
-                break;
-            }
-            
-            case 'sp_playlist':
-            case 'sp_album': {
-                // Spotify playlist/album - search each track on YouTube
-                if (play.is_expired()) {
-                    await play.refreshToken();
-                }
-                const sp = await play.spotify(url);
-                const spTracks = await sp.all_tracks();
-                
-                for (const track of spTracks.slice(0, this.config.maxQueueSize)) {
-                    try {
-                        const searchResult = await play.search(
-                            `${track.name} ${track.artists[0].name}`, 
-                            { limit: 1 }
-                        );
-                        if (searchResult.length > 0) {
-                            tracks.push(this.formatYouTubeTrack(searchResult[0]));
-                        }
-                    } catch (e) {
-                        // Skip failed tracks
-                        this.logger.warn(`Failed to find: ${track.name}`);
-                    }
-                }
-                break;
-            }
-            
-            case 'so_track': {
-                const info = await play.soundcloud(url);
-                tracks.push(this.formatSoundCloudTrack(info));
-                break;
-            }
-            
-            case 'so_playlist': {
-                const playlist = await play.soundcloud(url);
-                const scTracks = await playlist.all_tracks();
-                
-                for (const track of scTracks.slice(0, this.config.maxQueueSize)) {
-                    tracks.push(this.formatSoundCloudTrack(track));
-                }
-                break;
-            }
-            
-            default:
-                throw new Error('Unsupported URL type');
-        }
-
-        return tracks;
-    }
-
-    /**
-     * Search query on specified engine
-     */
-    async searchQuery(query, engine) {
-        let searchResult;
-        
-        switch (engine) {
-            case 'youtube':
-                searchResult = await play.search(query, { limit: 1, source: { youtube: 'video' } });
-                if (searchResult.length > 0) {
-                    return [this.formatYouTubeTrack(searchResult[0])];
-                }
-                break;
-                
-            case 'soundcloud':
-                searchResult = await play.search(query, { limit: 1, source: { soundcloud: 'tracks' } });
-                if (searchResult.length > 0) {
-                    return [this.formatSoundCloudTrack(searchResult[0])];
-                }
-                break;
-                
-            case 'spotify':
-                // Spotify search requires authentication, search on YouTube instead
-                searchResult = await play.search(query, { limit: 1, source: { youtube: 'video' } });
-                if (searchResult.length > 0) {
-                    return [this.formatYouTubeTrack(searchResult[0])];
-                }
-                break;
-        }
-        
-        return [];
-    }
-
-    /**
-     * Format YouTube track object
-     */
-    formatYouTubeTrack(video) {
-        return {
-            title: video.title || 'Unknown Title',
-            url: video.url,
-            duration: video.durationInSec || 0,
-            durationFormatted: video.durationRaw || '0:00',
-            thumbnail: video.thumbnails?.[0]?.url || null,
-            author: video.channel?.name || 'Unknown Artist',
-            authorUrl: video.channel?.url || null,
-            source: 'youtube',
-            requestedAt: Date.now()
-        };
-    }
-
-    /**
-     * Format SoundCloud track object
-     */
-    formatSoundCloudTrack(track) {
-        return {
-            title: track.name || 'Unknown Title',
-            url: track.url,
-            duration: Math.floor(track.durationInMs / 1000) || 0,
-            durationFormatted: this.formatDuration(Math.floor(track.durationInMs / 1000)),
-            thumbnail: track.thumbnail || null,
-            author: track.user?.name || 'Unknown Artist',
-            authorUrl: track.user?.url || null,
-            source: 'soundcloud',
-            requestedAt: Date.now()
-        };
-    }
-
-    /**
-     * Format duration in seconds to mm:ss or hh:mm:ss
      */
     formatDuration(seconds) {
         const hours = Math.floor(seconds / 3600);
@@ -229,23 +70,18 @@ class MusicQueue {
      * Create audio resource from track
      */
     async createResource(track) {
-        let stream;
-        
         try {
-            if (track.source === 'youtube') {
-                stream = await play.stream(track.url);
-            } else if (track.source === 'soundcloud') {
-                stream = await play.stream(track.url);
+            if (this.currentProcess && !this.currentProcess.killed) {
+                this.currentProcess.kill('SIGKILL');
             }
-            
-            const resource = createAudioResource(stream.stream, {
-                inputType: stream.type,
+            const child = ytdlp.stream(track.url);
+            this.currentProcess = child;
+            const resource = createAudioResource(child.stdout, {
+                inputType: StreamType.Arbitrary,
                 inlineVolume: true
             });
-            
             resource.volume?.setVolume(this.volume / 100);
             this.currentResource = resource;
-            
             return resource;
         } catch (error) {
             this.logger.error('Error creating audio resource:', error);
