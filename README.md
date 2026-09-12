@@ -36,9 +36,10 @@ Multi-instance Discord music bot management panel. Run 1-100+ bots with differen
 
 - **Multi-Bot Support**: Run 1-100+ bots simultaneously
 - **Flexible Prefixes**: Slash (`/`), text (`!`, `.`), or both
-- **Music Sources**: YouTube, Spotify, SoundCloud
+- **Music Sources**: YouTube / SoundCloud / many URLs via **yt-dlp** (not play-dl)
 - **Real-time Control**: WebSocket-based live updates
 - **Web Dashboard**: React + TailwindCSS interface
+- **User management**: first account is admin; later signups stay closed until an admin opens them
 - **90+ Settings**: Bot and server customization options
 
 ---
@@ -48,6 +49,9 @@ Multi-instance Discord music bot management panel. Run 1-100+ bots with differen
 - Node.js 18.0+
 - npm 9.0+
 - Discord Bot Token(s)
+- **ffmpeg** on `PATH` (voice decode)
+- **yt-dlp** on `PATH` (`pipx install yt-dlp` or `YTDLP_PATH=/full/path/yt-dlp`)
+- Optional: YouTube cookie file (`YOUTUBE_COOKIE`) for age-restricted / bot-blocked videos
 
 ---
 
@@ -86,9 +90,18 @@ DATABASE_PATH=./data/database.sqlite
 FRONTEND_URL=http://localhost:3000
 ```
 
-Install **ffmpeg** and **yt-dlp** on the host (`pipx install yt-dlp`). Voice playback also needs `libsodium-wrappers` (already in package.json).
+Install **ffmpeg** and **yt-dlp** on the host (`pipx install yt-dlp`). Voice encryption uses `libsodium-wrappers` (already in package.json).
 
-The first registered user becomes admin. After that, registration stays closed until an admin opens it from **Settings → Users**.
+**First-run accounts**
+
+1. Open the dashboard and **register**. That user becomes **admin**.
+2. Registration then **closes automatically**. Random visitors cannot create accounts or paste bot tokens.
+3. Admin → **Settings → Users**:
+   - **Open registration** / **Close registration** (asks the world whether signups are allowed)
+   - Create users (username, password, role)
+   - Promote / demote / delete (cannot delete yourself or the last admin)
+
+`CLIENT_ID` is optional when adding a bot: a valid token is sent to Discord’s `/oauth2/applications/@me` and the application id is stored.
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
@@ -96,7 +109,10 @@ The first registered user becomes admin. After that, registration stays closed u
 | `NODE_ENV` | Environment mode (`development`/`production`) | `development` | No |
 | `JWT_SECRET` | Secret key for JWT authentication (min 32 chars) | - | **Yes** |
 | `DATABASE_PATH` | SQLite database file location | `./data/database.sqlite` | No |
-| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:5173` | No |
+| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:3000` | No |
+| `SESSION_SECRET` | Express session secret | - | **Yes** in production |
+| `YTDLP_PATH` | yt-dlp binary | `yt-dlp` | No |
+| `YOUTUBE_COOKIE` | Cookie file path or raw `Cookie:` header | - | No (helps age-gated YouTube) |
 
 ---
 
@@ -1040,11 +1056,27 @@ const navigation = [
 3. Copy new token
 4. Update in dashboard
 
+### Nothing plays / “yt-dlp is not installed”
+
+1. `yt-dlp --version` in a shell. If missing: `pipx install yt-dlp` (or pip)
+2. `ffmpeg -version` must work
+3. Age-restricted videos: set `YOUTUBE_COOKIE` to a Netscape cookie file from a logged-in browser
+4. play-dl / ytdl-core are **not** used anymore — do not add them back
+
 ### Cannot connect to voice channel
 
 1. Bot needs Connect and Speak permissions
 2. Check voice channel isn't full
-3. Verify @discordjs/voice is installed
+3. Verify `@discordjs/voice` and `libsodium-wrappers` are installed
+4. Jumping tracks should not skip the selected song (fixed: `skipAdvance`)
+
+### Cannot add a bot (clientId required)
+
+Leave Client ID blank. The API derives it from the token. If derivation fails, the token is invalid or Discord is unreachable.
+
+### Registration says closed
+
+Expected after the first admin exists. Sign in as admin → Settings → Users → Open registration. Or create users yourself on that page.
 
 ### Frontend shows "Cannot connect to server"
 
