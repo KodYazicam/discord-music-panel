@@ -188,17 +188,17 @@ function DashboardLayout() {
               <Heart className="w-4 h-4 text-discord-red fill-current" />
               <span>by</span>
               <a
-                href="https://github.com/Veleslobo"
+                href="https://github.com/KodYazicam"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-discord-primary hover:text-discord-primary-hover font-medium"
               >
-                VelesLobo
+                KodYazicam
               </a>
             </div>
             <div className="flex items-center gap-4">
               <a
-                href="https://github.com/Veleslobo/discord-music-panel"
+                href="https://github.com/KodYazicam/discord-music-panel"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 hover:text-white transition-colors"
