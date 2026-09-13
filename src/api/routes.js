@@ -5,9 +5,21 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
+let rateLimit;
+let helmet;
+try {
+    rateLimit = require('express-rate-limit');
+} catch {
+    rateLimit = () => (_req, _res, next) => next();
+}
+try {
+    helmet = require('helmet');
+} catch {
+    helmet = () => (_req, _res, next) => next();
+}
 const { Logger } = require('../utils/Logger');
-const { userOperations, botOperations, statisticsOperations, playlistOperations, guildOperations, settingOperations } = require('../database/db');
+const { userOperations, botOperations, statisticsOperations, playlistOperations, settingOperations } = require('../database/db');
+const { isAdmin, requireBotAccess } = require('../utils/access');
 
 const logger = new Logger('API');
 
@@ -16,9 +28,18 @@ const logger = new Logger('API');
  */
 function setupRoutes(app) {
     const router = express.Router();
+    app.use(helmet({ contentSecurityPolicy: false }));
 
-    // JWT Secret
     const JWT_SECRET = process.env.JWT_SECRET || 'discord-music-panel-jwt-secret';
+    const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
+    const maxRequests = Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
+    const authLimiter = rateLimit({
+        windowMs,
+        max: Math.min(maxRequests, 30),
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { success: false, error: 'Too many attempts, try again later' }
+    });
 
     // Authentication middleware
     const authMiddleware = (req, res, next) => {
@@ -55,12 +76,15 @@ function setupRoutes(app) {
     /**
      * POST /api/auth/register - Register new user
      */
-    router.post('/auth/register', async (req, res) => {
+    router.post('/auth/register', authLimiter, async (req, res) => {
         try {
             const { username, password, email } = req.body;
 
             if (!username || !password) {
                 return res.status(400).json({ success: false, error: 'Username and password required' });
+            }
+            if (String(password).length < 8) {
+                return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
             }
 
             if (!registrationOpen()) {
@@ -103,7 +127,7 @@ function setupRoutes(app) {
     /**
      * POST /api/auth/login - Login user
      */
-    router.post('/auth/login', async (req, res) => {
+    router.post('/auth/login', authLimiter, async (req, res) => {
         try {
             const { username, password } = req.body;
 
@@ -160,6 +184,32 @@ function setupRoutes(app) {
         res.json({ success: true, user });
     });
 
+    router.patch('/auth/profile', authMiddleware, (req, res) => {
+        const username = String(req.body.username || '').trim();
+        const email = String(req.body.email || '').trim();
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'Username is required' });
+        }
+        userOperations.updateProfile(req.user.id, username, email);
+        res.json({ success: true, user: userOperations.getById(req.user.id) });
+    });
+
+    router.post('/auth/password', authMiddleware, async (req, res) => {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ success: false, error: 'Current and new password required' });
+        }
+        if (String(newPassword).length < 8) {
+            return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+        }
+        const user = userOperations.getAuthById(req.user.id);
+        if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
+            return res.status(401).json({ success: false, error: 'Current password is wrong' });
+        }
+        userOperations.updatePassword(req.user.id, await bcrypt.hash(newPassword, 10));
+        res.json({ success: true });
+    });
+
     router.get('/auth/registration', (_req, res) => {
         res.json({
             success: true,
@@ -181,6 +231,9 @@ function setupRoutes(app) {
             const { username, password, email, role } = req.body;
             if (!username || !password) {
                 return res.status(400).json({ success: false, error: 'Username and password required' });
+            }
+            if (String(password).length < 8) {
+                return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
             }
             if (userOperations.getByUsername(username)) {
                 return res.status(400).json({ success: false, error: 'Username already exists' });
@@ -241,7 +294,10 @@ function setupRoutes(app) {
     router.get('/bots', authMiddleware, (req, res) => {
         try {
             const botManager = req.app.get('botManager');
-            const bots = botManager.getAllBots();
+            let bots = botManager.getAllBots();
+            if (!isAdmin(req.user)) {
+                bots = bots.filter((bot) => Number(bot.createdBy) === Number(req.user.id) || Number(bot.created_by) === Number(req.user.id));
+            }
             res.json({ success: true, bots });
         } catch (error) {
             logger.error('Error getting bots:', error);
@@ -254,13 +310,13 @@ function setupRoutes(app) {
      */
     router.get('/bots/:id', authMiddleware, (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const botManager = req.app.get('botManager');
             const bot = botManager.getBot(req.params.id);
-            
             if (!bot) {
                 return res.status(404).json({ success: false, error: 'Bot not found' });
             }
-            
             res.json({ success: true, bot });
         } catch (error) {
             logger.error('Error getting bot:', error);
@@ -327,6 +383,8 @@ function setupRoutes(app) {
      */
     router.put('/bots/:id', authMiddleware, async (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const botManager = req.app.get('botManager');
             const result = await botManager.updateBot(req.params.id, req.body);
             res.json(result);
@@ -341,6 +399,8 @@ function setupRoutes(app) {
      */
     router.delete('/bots/:id', authMiddleware, async (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const botManager = req.app.get('botManager');
             const result = await botManager.deleteBot(req.params.id);
             res.json(result);
@@ -355,6 +415,8 @@ function setupRoutes(app) {
      */
     router.post('/bots/:id/start', authMiddleware, async (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const botManager = req.app.get('botManager');
             const result = await botManager.startBot(req.params.id);
             res.json(result);
@@ -369,6 +431,8 @@ function setupRoutes(app) {
      */
     router.post('/bots/:id/stop', authMiddleware, async (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const botManager = req.app.get('botManager');
             const result = await botManager.stopBot(req.params.id);
             res.json(result);
@@ -383,6 +447,8 @@ function setupRoutes(app) {
      */
     router.post('/bots/:id/restart', authMiddleware, async (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const botManager = req.app.get('botManager');
             const result = await botManager.restartBot(req.params.id);
             res.json(result);
@@ -397,6 +463,8 @@ function setupRoutes(app) {
      */
     router.get('/bots/:id/guilds', authMiddleware, (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const botManager = req.app.get('botManager');
             const guilds = botManager.getBotGuilds(req.params.id);
             res.json({ success: true, guilds });
@@ -411,6 +479,8 @@ function setupRoutes(app) {
      */
     router.get('/bots/:id/guilds/:guildId/queue', authMiddleware, (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const botManager = req.app.get('botManager');
             const queue = botManager.getQueue(req.params.id, req.params.guildId);
             res.json({ success: true, queue });
@@ -425,6 +495,8 @@ function setupRoutes(app) {
      */
     router.post('/bots/:id/guilds/:guildId/command', authMiddleware, async (req, res) => {
         try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
             const { command, args } = req.body;
             const botManager = req.app.get('botManager');
             const result = await botManager.executeCommand(
@@ -548,6 +620,9 @@ function setupRoutes(app) {
             if (!playlist) {
                 return res.status(404).json({ success: false, error: 'Playlist not found' });
             }
+            if (!playlist.is_public && Number(playlist.created_by) !== Number(req.user.id) && !isAdmin(req.user)) {
+                return res.status(403).json({ success: false, error: 'Forbidden' });
+            }
 
             const tracks = playlistOperations.getTracks(req.params.id);
             res.json({ success: true, playlist, tracks });
@@ -562,6 +637,11 @@ function setupRoutes(app) {
      */
     router.post('/playlists/:id/tracks', authMiddleware, (req, res) => {
         try {
+            const playlist = playlistOperations.getById(req.params.id);
+            if (!playlist) return res.status(404).json({ success: false, error: 'Playlist not found' });
+            if (Number(playlist.created_by) !== Number(req.user.id) && !isAdmin(req.user)) {
+                return res.status(403).json({ success: false, error: 'Forbidden' });
+            }
             const { title, url, duration, thumbnail, author } = req.body;
             
             if (!title || !url) {
@@ -581,6 +661,11 @@ function setupRoutes(app) {
      */
     router.delete('/playlists/:id/tracks/:trackId', authMiddleware, (req, res) => {
         try {
+            const playlist = playlistOperations.getById(req.params.id);
+            if (!playlist) return res.status(404).json({ success: false, error: 'Playlist not found' });
+            if (Number(playlist.created_by) !== Number(req.user.id) && !isAdmin(req.user)) {
+                return res.status(403).json({ success: false, error: 'Forbidden' });
+            }
             playlistOperations.removeTrack(req.params.trackId);
             res.json({ success: true, message: 'Track removed' });
         } catch (error) {
@@ -594,6 +679,11 @@ function setupRoutes(app) {
      */
     router.delete('/playlists/:id', authMiddleware, (req, res) => {
         try {
+            const playlist = playlistOperations.getById(req.params.id);
+            if (!playlist) return res.status(404).json({ success: false, error: 'Playlist not found' });
+            if (Number(playlist.created_by) !== Number(req.user.id) && !isAdmin(req.user)) {
+                return res.status(403).json({ success: false, error: 'Forbidden' });
+            }
             playlistOperations.delete(req.params.id);
             res.json({ success: true, message: 'Playlist deleted' });
         } catch (error) {
@@ -608,16 +698,9 @@ function setupRoutes(app) {
      * GET /api/health - Health check
      */
     router.get('/health', (req, res) => {
-        const botManager = req.app.get('botManager');
         res.json({
             success: true,
-            status: 'healthy',
-            uptime: process.uptime(),
-            memory: process.memoryUsage(),
-            bots: {
-                total: botOperations.getAll().length,
-                running: botManager.getRunningCount()
-            }
+            status: 'healthy'
         });
     });
 

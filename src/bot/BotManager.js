@@ -186,6 +186,7 @@ class BotManager {
             if (updates.djRoleId !== undefined) dbUpdates.dj_role_id = updates.djRoleId;
             if (updates.activityType !== undefined) dbUpdates.activity_type = updates.activityType;
             if (updates.activityText !== undefined) dbUpdates.activity_text = updates.activityText;
+            if (updates.token !== undefined) dbUpdates.token = updates.token;
 
             botOperations.update(botId, dbUpdates);
             
@@ -229,7 +230,8 @@ class BotManager {
             activityText: bot.activity_text,
             createdAt: bot.created_at,
             updatedAt: bot.updated_at,
-            // Runtime stats
+            createdBy: bot.created_by,
+            created_by: bot.created_by,
             ...(this.bots.has(bot.id) ? this.bots.get(bot.id).getStats() : {})
         }));
     }
@@ -262,6 +264,8 @@ class BotManager {
             activityText: bot.activity_text,
             createdAt: bot.created_at,
             updatedAt: bot.updated_at,
+            createdBy: bot.created_by,
+            created_by: bot.created_by,
             ...(runningBot ? runningBot.getStats() : {})
         };
     }

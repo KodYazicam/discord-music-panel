@@ -1,57 +1,20 @@
 # Contributing to Discord Music Panel
 
-Thank you for considering contributing to Discord Music Panel! 🎵
+## Setup
 
-## 👤 Author
+```bash
+npm install
+cd frontend && npm install && cd ..
+cp .env.example .env
+npm test
+```
 
-**KodYazicam**
-- 🐙 GitHub: [@KodYazicam](https://github.com/KodYazicam)
-- 📸 Instagram: [@kodyazicam](https://instagram.com/kodyazicam)
+`@discordjs/opus` native builds fail on some Node versions (including 24). Docker uses Node 20. Tests under `tests/` do not load opus.
 
-## 🤝 How to Contribute
+## Rules
 
-### Reporting Bugs
-
-If you find a bug, please open an issue at:
-https://github.com/KodYazicam/discord-music-panel/issues
-
-Include:
-- A clear description of the bug
-- Steps to reproduce
-- Expected vs actual behavior
-- Your Node.js version (`node --version`)
-- Your operating system
-
-### Suggesting Features
-
-Feature requests are welcome! Please open an issue with:
-- A clear description of the feature
-- Why you think it would be useful
-- Any implementation ideas
-
-### Pull Requests
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Code Style
-
-- Use ES6+ syntax
-- Follow existing code patterns
-- Comment complex logic
-- Test your changes before submitting
-
-## 📜 Code of Conduct
-
-Be respectful and inclusive. We're all here to make something awesome together!
-
-## 📄 License
-
-By contributing, you agree that your contributions will be licensed under the MIT License.
-
----
-
-**Questions?** Feel free to reach out via GitHub issues or Instagram [@kodyazicam](https://instagram.com/kodyazicam)
+- Bot tokens never leave the API in plaintext (`BotManager.getAllBots` already strips them; DB encrypts at rest).
+- Every bot/playlist/socket action must go through `requireBotAccess` or an owner check.
+- yt-dlp hosts stay allowlisted. Do not pass user URLs without `assertAllowedQuery`.
+- Socket.IO: emit both `bot:status` / `music:*` (frontend) and `bot:update` / `queue:update` (legacy).
+- Keep MIT license on this repo.

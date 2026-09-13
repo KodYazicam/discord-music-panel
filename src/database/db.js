@@ -7,6 +7,7 @@ const fs = require('fs');
 const Database = require('better-sqlite3');
 const path = require('path');
 const { Logger } = require('../utils/Logger');
+const { encryptSecret, decryptSecret } = require('../utils/crypto');
 
 const logger = new Logger('Database');
 
@@ -242,20 +243,35 @@ const botOperations = {
             INSERT INTO bots (id, name, token, client_id, prefix, prefix_type, auto_start, created_by)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        return stmt.run(bot.id, bot.name, bot.token, bot.clientId, bot.prefix, bot.prefixType, bot.autoStart ? 1 : 0, bot.createdBy);
+        return stmt.run(bot.id, bot.name, encryptSecret(bot.token), bot.clientId, bot.prefix, bot.prefixType, bot.autoStart ? 1 : 0, bot.createdBy);
     },
 
     getById: (id) => {
-        return db.prepare('SELECT * FROM bots WHERE id = ?').get(id);
+        const row = db.prepare('SELECT * FROM bots WHERE id = ?').get(id);
+        if (!row) return row;
+        return { ...row, token: decryptSecret(row.token) };
     },
 
     getAll: () => {
-        return db.prepare('SELECT * FROM bots ORDER BY created_at DESC').all();
+        return db.prepare('SELECT * FROM bots ORDER BY created_at DESC').all().map((row) => ({
+            ...row,
+            token: decryptSecret(row.token)
+        }));
     },
 
     update: (id, updates) => {
-        const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
-        const values = [...Object.values(updates), id];
+        const allowed = new Set([
+            'name', 'token', 'client_id', 'prefix', 'prefix_type', 'auto_start',
+            'volume', 'max_queue_size', 'default_search_engine', 'announce_songs',
+            'delete_bot_messages', 'stay_in_channel', 'dj_role_id', 'activity_type',
+            'activity_text', 'status'
+        ]);
+        const keys = Object.keys(updates).filter((key) => allowed.has(key));
+        if (!keys.length) return { changes: 0 };
+        const payload = { ...updates };
+        if (payload.token) payload.token = encryptSecret(payload.token);
+        const fields = keys.map((key) => `${key} = ?`).join(', ');
+        const values = [...keys.map((key) => payload[key]), id];
         const stmt = db.prepare(`UPDATE bots SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`);
         return stmt.run(...values);
     },
@@ -269,7 +285,10 @@ const botOperations = {
     },
 
     getAutoStartBots: () => {
-        return db.prepare('SELECT * FROM bots WHERE auto_start = 1').all();
+        return db.prepare('SELECT * FROM bots WHERE auto_start = 1').all().map((row) => ({
+            ...row,
+            token: decryptSecret(row.token)
+        }));
     }
 };
 
@@ -309,6 +328,8 @@ const guildOperations = {
 // Statistics operations
 const statisticsOperations = {
     increment: (botId, guildId, field, value = 1) => {
+        const allowed = new Set(['songs_played', 'total_playtime', 'commands_used']);
+        if (!allowed.has(field)) throw new Error(`Invalid statistics field: ${field}`);
         const stmt = db.prepare(`
             INSERT INTO statistics (bot_id, guild_id, ${field})
             VALUES (?, ?, ?)
@@ -439,6 +460,18 @@ const userOperations = {
 
     getById: (id) => {
         return db.prepare('SELECT id, username, email, role, created_at, last_login FROM users WHERE id = ?').get(id);
+    },
+
+    getAuthById: (id) => {
+        return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    },
+
+    updateProfile: (id, username, email) => {
+        return db.prepare('UPDATE users SET username = ?, email = ? WHERE id = ?').run(username, email, id);
+    },
+
+    updatePassword: (id, password) => {
+        return db.prepare('UPDATE users SET password = ? WHERE id = ?').run(password, id);
     },
 
     updateLastLogin: (id) => {

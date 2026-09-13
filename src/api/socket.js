@@ -4,6 +4,7 @@
 
 const jwt = require('jsonwebtoken');
 const { Logger } = require('../utils/Logger');
+const { requireBotAccess } = require('../utils/access');
 
 const logger = new Logger('Socket');
 const JWT_SECRET = process.env.JWT_SECRET || 'discord-music-panel-jwt-secret';
@@ -29,20 +30,31 @@ function setupSocketHandlers(io, botManager, db) {
         }
     });
 
+    const guard = (socket, botId) => {
+        const fakeReq = { user: socket.user };
+        return requireBotAccess(fakeReq, botId);
+    };
+
     io.on('connection', (socket) => {
         logger.info(`Client connected: ${socket.user.username} (${socket.id})`);
 
-        // Join user-specific room
         socket.join(`user:${socket.user.id}`);
 
-        // ==================== Bot Events ====================
-
-        /**
-         * Subscribe to bot updates
-         */
-        socket.on('bot:subscribe', (botId) => {
+        const subscribeBot = (botId) => {
+            const access = guard(socket, botId);
+            if (access.error) return false;
             socket.join(`bot:${botId}`);
-            logger.debug(`${socket.user.username} subscribed to bot ${botId}`);
+            return true;
+        };
+
+        socket.on('bot:subscribe', (botId) => {
+            subscribeBot(botId);
+        });
+        socket.on('join:bot', ({ botId } = {}) => {
+            if (botId) subscribeBot(botId);
+        });
+        socket.on('leave:bot', ({ botId } = {}) => {
+            if (botId) socket.leave(`bot:${botId}`);
         });
 
         /**
@@ -58,6 +70,8 @@ function setupSocketHandlers(io, botManager, db) {
          */
         socket.on('bot:start', async (botId, callback) => {
             try {
+                const access = guard(socket, botId);
+                if (access.error) return callback({ success: false, error: access.error });
                 const result = await botManager.startBot(botId);
                 callback(result);
             } catch (error) {
@@ -70,6 +84,8 @@ function setupSocketHandlers(io, botManager, db) {
          */
         socket.on('bot:stop', async (botId, callback) => {
             try {
+                const access = guard(socket, botId);
+                if (access.error) return callback({ success: false, error: access.error });
                 const result = await botManager.stopBot(botId);
                 callback(result);
             } catch (error) {
@@ -82,6 +98,8 @@ function setupSocketHandlers(io, botManager, db) {
          */
         socket.on('bot:restart', async (botId, callback) => {
             try {
+                const access = guard(socket, botId);
+                if (access.error) return callback({ success: false, error: error.message });
                 const result = await botManager.restartBot(botId);
                 callback(result);
             } catch (error) {
@@ -119,8 +137,17 @@ function setupSocketHandlers(io, botManager, db) {
          * Subscribe to guild updates
          */
         socket.on('guild:subscribe', ({ botId, guildId }) => {
+            const access = guard(socket, botId);
+            if (access.error) return;
             socket.join(`guild:${botId}:${guildId}`);
-            logger.debug(`${socket.user.username} subscribed to guild ${guildId} on bot ${botId}`);
+        });
+        socket.on('join:music', ({ botId, guildId } = {}) => {
+            const access = guard(socket, botId);
+            if (access.error || !guildId) return;
+            socket.join(`guild:${botId}:${guildId}`);
+        });
+        socket.on('leave:music', ({ botId, guildId } = {}) => {
+            if (botId && guildId) socket.leave(`guild:${botId}:${guildId}`);
         });
 
         /**
@@ -163,6 +190,8 @@ function setupSocketHandlers(io, botManager, db) {
          */
         socket.on('music:play', async ({ botId, guildId, query, voiceChannelId, textChannelId }, callback) => {
             try {
+                const access = guard(socket, botId);
+                if (access.error) return callback({ success: false, error: access.error });
                 const result = await botManager.executeCommand(botId, guildId, 'play', {
                     query,
                     voiceChannelId,
@@ -349,32 +378,22 @@ function setupSocketHandlers(io, botManager, db) {
      * Broadcast bot update to subscribers
      */
     botManager.emitBotUpdate = (botId, event, data) => {
-        io.to(`bot:${botId}`).emit('bot:update', { botId, event, data, timestamp: new Date().toISOString() });
-        io.emit('bots:update', { botId, event, timestamp: new Date().toISOString() });
+        const payload = { botId, event, data, status: event, timestamp: new Date().toISOString() };
+        io.to(`bot:${botId}`).emit('bot:update', payload);
+        io.to(`bot:${botId}`).emit('bot:status', payload);
+        io.emit('bots:update', { botId, event, timestamp: payload.timestamp });
     };
 
-    /**
-     * Broadcast queue update
-     */
     botManager.emitQueueUpdate = (botId, guildId, queue) => {
-        io.to(`guild:${botId}:${guildId}`).emit('queue:update', {
-            botId,
-            guildId,
-            queue,
-            timestamp: new Date().toISOString()
-        });
+        const payload = { botId, guildId, queue, timestamp: new Date().toISOString() };
+        io.to(`guild:${botId}:${guildId}`).emit('queue:update', payload);
+        io.to(`guild:${botId}:${guildId}`).emit('music:queueUpdate', payload);
     };
 
-    /**
-     * Broadcast now playing update
-     */
     botManager.emitNowPlaying = (botId, guildId, track) => {
-        io.to(`guild:${botId}:${guildId}`).emit('nowplaying:update', {
-            botId,
-            guildId,
-            track,
-            timestamp: new Date().toISOString()
-        });
+        const payload = { botId, guildId, track, timestamp: new Date().toISOString() };
+        io.to(`guild:${botId}:${guildId}`).emit('nowplaying:update', payload);
+        io.to(`guild:${botId}:${guildId}`).emit('music:trackStart', payload);
     };
 
     logger.info('Socket handlers initialized');

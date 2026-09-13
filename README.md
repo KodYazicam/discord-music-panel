@@ -7,7 +7,11 @@
 
 **Created by [KodYazicam](https://github.com/KodYazicam)** | [Instagram: @kodyazicam](https://instagram.com/kodyazicam)
 
-Multi-instance Discord music bot management panel. Run 1-100+ bots with different prefixes from a single dashboard.
+Self-hosted Discord music bot **panel**. One Node process, SQLite, a React dashboard. Run a handful of bots you own — not a SaaS for a hundred tenants.
+
+**Default ports:** API/panel **4000**, Vite dev **3000**. Docker compose binds `127.0.0.1:4000`.
+
+Read [SECURITY.md](./SECURITY.md) before you publish the port.
 
 ---
 
@@ -34,13 +38,17 @@ Multi-instance Discord music bot management panel. Run 1-100+ bots with differen
 
 ## ✨ Features
 
-- **Multi-Bot Support**: Run 1-100+ bots simultaneously
-- **Flexible Prefixes**: Slash (`/`), text (`!`, `.`), or both
-- **Music Sources**: YouTube / SoundCloud / many URLs via **yt-dlp** (not play-dl)
-- **Real-time Control**: WebSocket-based live updates
-- **Web Dashboard**: React + TailwindCSS interface
+- **Multi-bot**: several Discord clients in one process (voice + yt-dlp will OOM long before “100 bots”)
+- **Flexible prefixes**: slash (`/`), text (`!`, `.`), or both
+- **Music sources**: YouTube / SoundCloud / Spotify **hosts only**, via **yt-dlp** (allowlisted; `--` terminator; 30s timeout)
+- **AuthZ**: non-admin users only see and control bots they created
+- **Tokens at rest**: AES-256-GCM (`TOKEN_ENCRYPTION_KEY`)
+- **Playlists**: IDOR-safe (owner or admin)
+- **Real-time**: Socket.IO (`bot:status`, `music:queueUpdate`, `music:trackStart`, plus the older `bot:update` / `queue:update` names)
+- **Web dashboard**: React + TailwindCSS
 - **User management**: first account is admin; later signups stay closed until an admin opens them
-- **90+ Settings**: Bot and server customization options
+- **Helmet + rate limit** on `/api/auth/*`
+- **Health**: `GET /api/health` returns `{ status: "healthy" }` only
 
 ---
 
@@ -97,8 +105,13 @@ Create `.env` in the root directory:
 PORT=4000
 NODE_ENV=development
 JWT_SECRET=your-secret-key-minimum-32-characters
+SESSION_SECRET=your-session-secret
+TOKEN_ENCRYPTION_KEY=change-this-token-encryption-key
 DATABASE_PATH=./data/database.sqlite
 FRONTEND_URL=http://localhost:3000
+CORS_ORIGINS=http://localhost:3000,http://localhost:4000
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
 ```
 
 Install **ffmpeg** and **yt-dlp** on the host (`pipx install yt-dlp`). Voice encryption uses `libsodium-wrappers` (already in package.json).
@@ -120,9 +133,14 @@ Install **ffmpeg** and **yt-dlp** on the host (`pipx install yt-dlp`). Voice enc
 | `NODE_ENV` | Environment mode (`development`/`production`) | `development` | No |
 | `JWT_SECRET` | Secret key for JWT authentication (min 32 chars) | - | **Yes** |
 | `DATABASE_PATH` | SQLite database file location | `./data/database.sqlite` | No |
-| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:3000` | No |
+| `FRONTEND_URL` | Frontend URL for CORS (used if `CORS_ORIGINS` is unset) | `http://localhost:3000` | No |
+| `CORS_ORIGINS` | Comma-separated allowed origins | `FRONTEND_URL` | No |
 | `SESSION_SECRET` | Express session secret | - | **Yes** in production |
+| `TOKEN_ENCRYPTION_KEY` | AES-256 material for Discord bot tokens at rest | falls back to `JWT_SECRET` | **Yes** in production |
+| `RATE_LIMIT_WINDOW_MS` | Auth rate-limit window | `900000` | No |
+| `RATE_LIMIT_MAX_REQUESTS` | Auth rate-limit max | `100` (auth routes cap at 30) | No |
 | `YTDLP_PATH` | yt-dlp binary | `yt-dlp` | No |
+| `YTDLP_TIMEOUT_MS` | yt-dlp kill timeout | `30000` | No |
 | `YOUTUBE_COOKIE` | Cookie file path or raw `Cookie:` header | - | No (helps age-gated YouTube) |
 
 ---
@@ -254,7 +272,7 @@ Main entry point. Starts Express server and initializes components.
 
 **Key Variables:**
 ```javascript
-const PORT = process.env.PORT || 3000;  // Server port
+const PORT = process.env.PORT || 4000;  // Server port
 ```
 
 **Modification:** Change port in `.env` file.
@@ -277,14 +295,12 @@ REST API endpoints.
 | DELETE | `/api/bots/:id` | Delete bot |
 | POST | `/api/bots/:id/start` | Start bot |
 | POST | `/api/bots/:id/stop` | Stop bot |
+| POST | `/api/bots/:id/restart` | Restart bot |
 | GET | `/api/bots/:id/guilds` | Get bot's servers |
-| POST | `/api/music/:botId/:guildId/play` | Play track |
-| POST | `/api/music/:botId/:guildId/pause` | Pause |
-| POST | `/api/music/:botId/:guildId/resume` | Resume |
-| POST | `/api/music/:botId/:guildId/skip` | Skip track |
-| POST | `/api/music/:botId/:guildId/stop` | Stop playback |
-| POST | `/api/music/:botId/:guildId/volume` | Set volume |
-| GET | `/api/music/:botId/:guildId/queue` | Get queue |
+| GET | `/api/bots/:id/guilds/:guildId/queue` | Get queue |
+| POST | `/api/bots/:id/guilds/:guildId/command` | Run play/pause/skip/… (`{ command, args }`) |
+| PATCH | `/api/auth/profile` | Update username/email |
+| POST | `/api/auth/password` | Change password |
 
 **Adding a new endpoint:**
 ```javascript
@@ -783,26 +799,32 @@ Authorization: Bearer <token>
 
 ### Music
 
+There is no `/api/music/...` tree. Playback goes through the bot command endpoint.
+
 **Play Track:**
 ```http
-POST /api/music/:botId/:guildId/play
+POST /api/bots/:id/guilds/:guildId/command
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "query": "never gonna give you up",
-  "voiceChannelId": "123456789"
+  "command": "play",
+  "args": {
+    "query": "never gonna give you up",
+    "voiceChannelId": "123456789"
+  }
 }
 ```
 
 **Set Volume:**
 ```http
-POST /api/music/:botId/:guildId/volume
+POST /api/bots/:id/guilds/:guildId/command
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "volume": 80
+  "command": "volume",
+  "args": { "volume": 80 }
 }
 ```
 
@@ -810,40 +832,33 @@ Content-Type: application/json
 
 ## 📡 WebSocket Events
 
+Auth is JWT in `socket.handshake.auth.token`. Bot actions are authorized the same way as REST (`created_by` or admin).
+
 ### Client → Server
 
-**Join Bot Room:**
 ```javascript
-socket.emit('join-bot', { botId: 'bot-id' });
-```
-
-**Leave Bot Room:**
-```javascript
-socket.emit('leave-bot', { botId: 'bot-id' });
+socket.emit('join:bot', { botId });
+socket.emit('leave:bot', { botId });
+socket.emit('join:music', { botId, guildId });
+socket.emit('bot:subscribe', botId);      // alias
+socket.emit('guild:subscribe', { botId, guildId });
 ```
 
 ### Server → Client
 
-**Bot Status Update:**
+Frontend listens to these (backend emits both new and legacy names):
+
 ```javascript
-socket.on('bot-status', (data) => {
-  // data = { botId: 'id', status: 'online'/'offline' }
-});
+socket.on('bot:status', ({ botId, status }) => {});
+socket.on('music:queueUpdate', ({ botId, guildId, queue }) => {});
+socket.on('music:trackStart', ({ botId, guildId, track }) => {});
+socket.on('music:pause', ({ botId, guildId }) => {});
+socket.on('music:resume', ({ botId, guildId }) => {});
+socket.on('music:stop', ({ botId, guildId }) => {});
+socket.on('music:volumeChange', ({ botId, guildId, volume }) => {});
 ```
 
-**Queue Update:**
-```javascript
-socket.on('queue-update', (data) => {
-  // data = { botId, guildId, queue: [...tracks] }
-});
-```
-
-**Track Start:**
-```javascript
-socket.on('track-start', (data) => {
-  // data = { botId, guildId, track: {...} }
-});
-```
+Legacy aliases still fire: `bot:update`, `queue:update`, `nowplaying:update`.
 
 ---
 

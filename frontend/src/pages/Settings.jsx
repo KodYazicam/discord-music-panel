@@ -63,8 +63,12 @@ function Settings() {
     setSaveError('')
     setSaveSuccess('')
     
-    // Normally API request would be sent here
-    setSaveSuccess('Profile updated successfully')
+    try {
+      await api.patch('/auth/profile', profileData)
+      setSaveSuccess('Profile updated successfully')
+    } catch (error) {
+      setSaveError(error.response?.data?.error || 'Failed to update profile')
+    }
     setTimeout(() => setSaveSuccess(''), 3000)
   }
 
@@ -78,14 +82,21 @@ function Settings() {
       return
     }
     
-    if (passwordData.newPassword.length < 6) {
-      setSaveError('Password must be at least 6 characters')
+    if (passwordData.newPassword.length < 8) {
+      setSaveError('Password must be at least 8 characters')
       return
     }
-    
-    // Normally API request would be sent here
-    setSaveSuccess('Password changed successfully')
-    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+    try {
+      await api.post('/auth/password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      })
+      setSaveSuccess('Password changed successfully')
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+    } catch (error) {
+      setSaveError(error.response?.data?.error || 'Failed to change password')
+    }
     setTimeout(() => setSaveSuccess(''), 3000)
   }
 

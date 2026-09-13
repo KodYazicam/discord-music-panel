@@ -104,12 +104,14 @@ class MusicQueue {
         }
         
         // Emit update
-        this.io?.emit('queue:trackAdded', {
+        const payload = {
             botId: this.config.id,
             guildId: this.guildId,
             track,
             position: position >= 0 ? position : this.tracks.length - 1
-        });
+        };
+        this.io?.to(`guild:${this.config.id}:${this.guildId}`).emit('queue:trackAdded', payload);
+        this.io?.to(`guild:${this.config.id}:${this.guildId}`).emit('music:queueUpdate', payload);
     }
 
     /**

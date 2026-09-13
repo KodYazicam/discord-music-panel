@@ -49,6 +49,13 @@ class MusicBot {
         
         // Music queues per guild
         this.queues = new Map(); // guildId -> MusicQueue
+        this.emitToGuild = (guildId, events, payload) => {
+            const names = Array.isArray(events) ? events : [events];
+            const room = `guild:${this.config.id}:${guildId}`;
+            for (const name of names) {
+                this.io?.to(room).emit(name, { botId: this.config.id, guildId, ...payload });
+            }
+        };
         
         // Audio players per guild
         this.players = new Map(); // guildId -> AudioPlayer
@@ -533,7 +540,7 @@ class MusicBot {
             }
 
             // Emit queue update
-            this.io?.emit('queue:update', {
+            this.emitToGuild(guildId, ['queue:update', 'music:queueUpdate'], {
                 botId: this.config.id,
                 guildId,
                 queue: this.getQueue(guildId)
@@ -613,7 +620,7 @@ class MusicBot {
             this.queues.delete(guildId);
         }
 
-        this.io?.emit('queue:cleared', { botId: this.config.id, guildId });
+        this.emitToGuild(guildId, ['queue:cleared', 'music:stop'], {});
         
         return { success: true, message: 'Left voice channel' };
     }
@@ -686,7 +693,7 @@ class MusicBot {
             }
 
             // Emit now playing
-            this.io?.emit('nowplaying:update', {
+            this.emitToGuild(guildId, ['nowplaying:update', 'music:trackStart'], {
                 botId: this.config.id,
                 guildId,
                 track,
@@ -744,7 +751,7 @@ class MusicBot {
             queue.isPlaying = false;
             queue.currentTrack = null;
             
-            this.io?.emit('queue:ended', { botId: this.config.id, guildId });
+            this.emitToGuild(guildId, ['queue:ended', 'music:trackEnd'], {});
             
             // Auto-leave if configured
             if (!this.config.stayInChannel) {
@@ -776,7 +783,7 @@ class MusicBot {
         queue.isPaused = true;
         queue.pauseTime = Date.now();
 
-        this.io?.emit('player:paused', { botId: this.config.id, guildId });
+        this.emitToGuild(guildId, ['player:paused', 'music:pause'], {});
         
         return { success: true, message: 'Paused' };
     }
@@ -801,7 +808,7 @@ class MusicBot {
             queue.pauseTime = null;
         }
 
-        this.io?.emit('player:resumed', { botId: this.config.id, guildId });
+        this.emitToGuild(guildId, ['player:resumed', 'music:resume'], {});
         
         return { success: true, message: 'Resumed' };
     }
@@ -837,7 +844,7 @@ class MusicBot {
             queue.clear();
         }
 
-        this.io?.emit('queue:cleared', { botId: this.config.id, guildId });
+        this.emitToGuild(guildId, ['queue:cleared', 'music:stop'], {});
         
         return { success: true, message: 'Stopped' };
     }
@@ -855,7 +862,7 @@ class MusicBot {
         volume = Math.max(0, Math.min(200, volume));
         queue.setVolume(volume);
 
-        this.io?.emit('volume:update', { botId: this.config.id, guildId, volume });
+        this.emitToGuild(guildId, ['volume:update', 'music:volumeChange'], { volume });
         
         return { success: true, message: `Volume set to ${volume}%` };
     }
@@ -881,9 +888,7 @@ class MusicBot {
 
         queue.shuffle();
         
-        this.io?.emit('queue:update', {
-            botId: this.config.id,
-            guildId,
+        this.emitToGuild(guildId, ['queue:update', 'music:queueUpdate'], {
             queue: this.getQueue(guildId)
         });
         
@@ -915,7 +920,7 @@ class MusicBot {
                 break;
         }
 
-        this.io?.emit('loop:update', { botId: this.config.id, guildId, mode });
+        this.emitToGuild(guildId, ['loop:update', 'music:queueUpdate'], { mode, queue: this.getQueue(guildId) });
         
         return { success: true, message: `Loop mode: ${mode}` };
     }
@@ -936,9 +941,7 @@ class MusicBot {
             return { success: false, message: 'Invalid track index' };
         }
 
-        this.io?.emit('queue:update', {
-            botId: this.config.id,
-            guildId,
+        this.emitToGuild(guildId, ['queue:update', 'music:queueUpdate'], {
             queue: this.getQueue(guildId)
         });
         
@@ -958,9 +961,7 @@ class MusicBot {
         const currentTrack = queue.currentTrack;
         queue.tracks = [];
         
-        this.io?.emit('queue:update', {
-            botId: this.config.id,
-            guildId,
+        this.emitToGuild(guildId, ['queue:update', 'music:queueUpdate'], {
             queue: this.getQueue(guildId)
         });
         
@@ -983,9 +984,7 @@ class MusicBot {
             return { success: false, message: 'Invalid indices' };
         }
 
-        this.io?.emit('queue:update', {
-            botId: this.config.id,
-            guildId,
+        this.emitToGuild(guildId, ['queue:update', 'music:queueUpdate'], {
             queue: this.getQueue(guildId)
         });
         

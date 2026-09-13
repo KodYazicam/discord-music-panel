@@ -9,7 +9,8 @@
     "bot": "node src/bot/standalone.js",
     "build:frontend": "cd frontend && npm run build",
     "install:all": "npm install && cd frontend && npm install",
-    "setup": "node src/scripts/setup.js"
+    "setup": "node src/scripts/setup.js",
+    "test": "node --test tests/**/*.test.js"
   },
   "keywords": [
     "discord",
@@ -28,7 +29,7 @@
     "react",
     "expressjs"
   ],
-    "author": {
+  "author": {
     "name": "KodYazicam",
     "url": "https://github.com/KodYazicam"
   },
@@ -50,7 +51,9 @@
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.5.1",
     "express-session": "^1.17.3",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "libsodium-wrappers": "^0.7.13",
     "socket.io": "^4.6.1",
@@ -61,6 +64,6 @@
     "nodemon": "^3.0.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }
