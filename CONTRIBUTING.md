@@ -6,7 +6,7 @@ Thank you for considering contributing to Discord Music Panel! 🎵
 
 **KodYazicam**
 - 🐙 GitHub: [@KodYazicam](https://github.com/KodYazicam)
-- 📸 Instagram: [@4veles](https://instagram.com/4veles)
+- 📸 Instagram: [@kodyazicam](https://instagram.com/kodyazicam)
 
 ## 🤝 How to Contribute
 
@@ -54,4 +54,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-**Questions?** Feel free to reach out via GitHub issues or Instagram [@4veles](https://instagram.com/4veles)
+**Questions?** Feel free to reach out via GitHub issues or Instagram [@kodyazicam](https://instagram.com/kodyazicam)

@@ -49,13 +49,13 @@ function AuthLayout() {
                   <span className="text-sm">GitHub</span>
                 </a>
                 <a
-                  href="https://instagram.com/4veles"
+                  href="https://instagram.com/kodyazicam"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
                 >
                   <Instagram className="w-4 h-4" />
-                  <span className="text-sm">@4veles</span>
+                  <span className="text-sm">@kodyazicam</span>
                 </a>
               </div>
             </div>
@@ -106,13 +106,13 @@ function AuthLayout() {
             <span>GitHub</span>
           </a>
           <a
-            href="https://instagram.com/4veles"
+            href="https://instagram.com/kodyazicam"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 hover:text-white transition-colors"
           >
             <Instagram className="w-4 h-4" />
-            <span>@4veles</span>
+            <span>@kodyazicam</span>
           </a>
         </div>
       </footer>

@@ -207,13 +207,13 @@ function DashboardLayout() {
                 <span>GitHub</span>
               </a>
               <a
-                href="https://instagram.com/4veles"
+                href="https://instagram.com/kodyazicam"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 hover:text-white transition-colors"
               >
                 <Instagram className="w-4 h-4" />
-                <span>@4veles</span>
+                <span>@kodyazicam</span>
               </a>
             </div>
           </div>

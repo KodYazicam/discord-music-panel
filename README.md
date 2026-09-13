@@ -5,7 +5,7 @@
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blurple.svg)
 ![Author](https://img.shields.io/badge/Author-KodYazicam-purple.svg)
 
-**Created by [KodYazicam](https://github.com/KodYazicam)** | [Instagram: @4veles](https://instagram.com/4veles)
+**Created by [KodYazicam](https://github.com/KodYazicam)** | [Instagram: @kodyazicam](https://instagram.com/kodyazicam)
 
 Multi-instance Discord music bot management panel. Run 1-100+ bots with different prefixes from a single dashboard.
 
@@ -1113,7 +1113,7 @@ Expected after the first admin exists. Sign in as admin → Settings → Users �
 **KodYazicam**
 
 - 🐙 GitHub: [@KodYazicam](https://github.com/KodYazicam)
-- 📸 Instagram: [@4veles](https://instagram.com/4veles)
+- 📸 Instagram: [@kodyazicam](https://instagram.com/kodyazicam)
 
 ---
 
