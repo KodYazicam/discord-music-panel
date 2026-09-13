@@ -10,7 +10,7 @@
     "build:frontend": "cd frontend && npm run build",
     "install:all": "npm install && cd frontend && npm install",
     "setup": "node src/scripts/setup.js",
-    "test": "node --test tests/**/*.test.js"
+    "test": "node --test"
   },
   "keywords": [
     "discord",
