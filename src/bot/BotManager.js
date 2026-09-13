@@ -187,6 +187,18 @@ class BotManager {
             if (updates.activityType !== undefined) dbUpdates.activity_type = updates.activityType;
             if (updates.activityText !== undefined) dbUpdates.activity_text = updates.activityText;
             if (updates.token !== undefined) dbUpdates.token = updates.token;
+            if (updates.settings !== undefined) {
+                dbUpdates.extra_settings = JSON.stringify(updates.settings);
+                if (updates.settings.defaultVolume !== undefined) dbUpdates.volume = updates.settings.defaultVolume;
+                if (updates.settings.maxQueueSize !== undefined) dbUpdates.max_queue_size = updates.settings.maxQueueSize;
+                if (updates.settings.announceNowPlaying !== undefined) dbUpdates.announce_songs = updates.settings.announceNowPlaying ? 1 : 0;
+                if (updates.settings.deleteCommandMessages !== undefined) dbUpdates.delete_bot_messages = updates.settings.deleteCommandMessages ? 1 : 0;
+                if (updates.settings.stayInVoice !== undefined) dbUpdates.stay_in_channel = updates.settings.stayInVoice ? 1 : 0;
+                if (updates.settings.djRoleId !== undefined) dbUpdates.dj_role_id = updates.settings.djRoleId;
+                if (updates.settings.activityType !== undefined) dbUpdates.activity_type = updates.settings.activityType;
+                if (updates.settings.activityText !== undefined) dbUpdates.activity_text = updates.settings.activityText;
+                if (updates.settings.status !== undefined) dbUpdates.status = updates.settings.status;
+            }
 
             botOperations.update(botId, dbUpdates);
             
@@ -232,6 +244,7 @@ class BotManager {
             updatedAt: bot.updated_at,
             createdBy: bot.created_by,
             created_by: bot.created_by,
+            settings: parseExtraSettings(bot.extra_settings),
             ...(this.bots.has(bot.id) ? this.bots.get(bot.id).getStats() : {})
         }));
     }
@@ -266,6 +279,7 @@ class BotManager {
             updatedAt: bot.updated_at,
             createdBy: bot.created_by,
             created_by: bot.created_by,
+            settings: parseExtraSettings(bot.extra_settings),
             ...(runningBot ? runningBot.getStats() : {})
         };
     }
@@ -435,6 +449,16 @@ class BotManager {
      */
     getRunningBot(botId) {
         return this.bots.get(botId);
+    }
+}
+
+function parseExtraSettings(raw) {
+    if (!raw) return {};
+    if (typeof raw === 'object') return raw;
+    try {
+        return JSON.parse(raw);
+    } catch {
+        return {};
     }
 }
 

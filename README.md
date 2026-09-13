@@ -45,7 +45,7 @@ Read [SECURITY.md](./SECURITY.md) before you publish the port.
 - **Tokens at rest**: AES-256-GCM (`TOKEN_ENCRYPTION_KEY`)
 - **Playlists**: IDOR-safe (owner or admin)
 - **Real-time**: Socket.IO (`bot:status`, `music:queueUpdate`, `music:trackStart`, plus the older `bot:update` / `queue:update` names)
-- **Web dashboard**: React + TailwindCSS
+- **Web dashboard**: React + TailwindCSS. Bot Settings persist in `bots.extra_settings` (JSON), not a fake success toast. Token changes require a restart.
 - **User management**: first account is admin; later signups stay closed until an admin opens them
 - **Helmet + rate limit** on `/api/auth/*`
 - **Health**: `GET /api/health` returns `{ status: "healthy" }` only

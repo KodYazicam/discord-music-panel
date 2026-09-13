@@ -73,9 +73,16 @@ function initDatabase() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             created_by INTEGER,
+            extra_settings TEXT DEFAULT '{}',
             FOREIGN KEY (created_by) REFERENCES users(id)
         )
     `);
+
+    try {
+        db.exec("ALTER TABLE bots ADD COLUMN extra_settings TEXT DEFAULT '{}'");
+    } catch {
+        // already migrated
+    }
 
     // Bot guilds - Servers each bot is in
     db.exec(`
@@ -264,7 +271,7 @@ const botOperations = {
             'name', 'token', 'client_id', 'prefix', 'prefix_type', 'auto_start',
             'volume', 'max_queue_size', 'default_search_engine', 'announce_songs',
             'delete_bot_messages', 'stay_in_channel', 'dj_role_id', 'activity_type',
-            'activity_text', 'status'
+            'activity_text', 'status', 'extra_settings'
         ]);
         const keys = Object.keys(updates).filter((key) => allowed.has(key));
         if (!keys.length) return { changes: 0 };
