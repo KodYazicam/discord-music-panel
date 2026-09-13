@@ -190,7 +190,7 @@ npm start
    - Message Content Intent (required for text commands)
 6. Go to **OAuth2 → URL Generator**
 7. Select scopes: `bot`, `applications.commands`
-8. Select permissions: `Administrator` (or individual permissions)
+8. Select permissions for music (Connect, Speak, Send Messages, Embed Links, Read Message History). Do not tick Administrator unless you understand the blast radius.
 9. Copy URL and invite bot to your server
 
 ---

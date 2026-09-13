@@ -188,7 +188,9 @@ class BotManager {
             if (updates.activityText !== undefined) dbUpdates.activity_text = updates.activityText;
             if (updates.token !== undefined) dbUpdates.token = updates.token;
             if (updates.settings !== undefined) {
-                dbUpdates.extra_settings = JSON.stringify(updates.settings);
+                const extra = { ...updates.settings };
+                delete extra.token;
+                dbUpdates.extra_settings = JSON.stringify(extra);
                 if (updates.settings.defaultVolume !== undefined) dbUpdates.volume = updates.settings.defaultVolume;
                 if (updates.settings.maxQueueSize !== undefined) dbUpdates.max_queue_size = updates.settings.maxQueueSize;
                 if (updates.settings.announceNowPlaying !== undefined) dbUpdates.announce_songs = updates.settings.announceNowPlaying ? 1 : 0;
