@@ -3,6 +3,7 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
+const { parseTimeToSeconds, formatTime } = require('../../../utils/time');
 
 module.exports = {
     name: 'seek',
@@ -35,22 +36,9 @@ module.exports = {
             });
         }
 
-        // Parse time
-        let seconds = 0;
-        const timeStr = args[0];
-        
-        if (timeStr.includes(':')) {
-            const parts = timeStr.split(':').map(p => parseInt(p));
-            if (parts.length === 2) {
-                seconds = parts[0] * 60 + parts[1];
-            } else if (parts.length === 3) {
-                seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
-            }
-        } else {
-            seconds = parseInt(timeStr);
-        }
+        const seconds = parseTimeToSeconds(args[0]);
 
-        if (isNaN(seconds) || seconds < 0) {
+        if (seconds === null) {
             return message.reply({
                 embeds: [
                     new EmbedBuilder()
@@ -63,12 +51,6 @@ module.exports = {
         const result = bot.seek(message.guild.id, seconds);
 
         if (result.success) {
-            const formatTime = (s) => {
-                const mins = Math.floor(s / 60);
-                const secs = s % 60;
-                return `${mins}:${secs.toString().padStart(2, '0')}`;
-            };
-            
             return message.reply({
                 embeds: [
                     new EmbedBuilder()

@@ -880,6 +880,8 @@ Legacy aliases still fire: `bot:update`, `queue:update`, `nowplaying:update`.
 | `/loop <mode>` | Set loop mode | mode: off/track/queue |
 | `/remove <position>` | Remove from queue | position: Track number |
 | `/clear` | Clear queue | - |
+| `/seek <time>` | Seek position | time: `90`, `1:30`, or `1:30:15` |
+| `/jump <number>` | Jump to track | number: Track number (1-based) |
 | `/help` | Show commands | - |
 
 ### Text Commands

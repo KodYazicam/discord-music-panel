@@ -40,6 +40,8 @@ const loopSlash = require('./slash/loop');
 const removeSlash = require('./slash/remove');
 const clearSlash = require('./slash/clear');
 const helpSlash = require('./slash/help');
+const seekSlash = require('./slash/seek');
+const jumpSlash = require('./slash/jump');
 
 const logger = new Logger('CommandLoader');
 
@@ -99,7 +101,9 @@ function loadSlashCommands() {
         loopSlash,
         removeSlash,
         clearSlash,
-        helpSlash
+        helpSlash,
+        seekSlash,
+        jumpSlash
     ];
 
     for (const command of slashCommands) {
