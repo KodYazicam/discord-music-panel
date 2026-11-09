@@ -15,6 +15,8 @@ All notable changes to this project are documented here. The format follows
 
 - Added a global API rate limiter and a separate static-asset limiter.
 - Replaced the disabled Helmet CSP with explicit development and production policies.
+- Overrode `tar` to `^7.5.21` and `minimatch` to `^11.0.5` for transitive
+  install-time dependencies, clearing the remaining Dependabot advisories.
 
 ## [1.0.0] - 2026-09-20
 
