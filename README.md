@@ -86,7 +86,7 @@ cp .env.example .env
 
 ```bash
 cp .env.example .env
-# set JWT_SECRET and SESSION_SECRET to long random values
+# set JWT_SECRET and TOKEN_ENCRYPTION_KEY to long random values
 docker compose up --build
 # dashboard: http://localhost:4000
 ```
@@ -105,7 +105,6 @@ Create `.env` in the root directory:
 PORT=4000
 NODE_ENV=development
 JWT_SECRET=your-secret-key-minimum-32-characters
-SESSION_SECRET=your-session-secret
 TOKEN_ENCRYPTION_KEY=change-this-token-encryption-key
 DATABASE_PATH=./data/database.sqlite
 FRONTEND_URL=http://localhost:3000
@@ -135,7 +134,6 @@ Install **ffmpeg** and **yt-dlp** on the host (`pipx install yt-dlp`). Voice enc
 | `DATABASE_PATH` | SQLite database file location | `./data/database.sqlite` | No |
 | `FRONTEND_URL` | Frontend URL for CORS (used if `CORS_ORIGINS` is unset) | `http://localhost:3000` | No |
 | `CORS_ORIGINS` | Comma-separated allowed origins | `FRONTEND_URL` | No |
-| `SESSION_SECRET` | Express session secret | - | **Yes** in production |
 | `TOKEN_ENCRYPTION_KEY` | AES-256 material for Discord bot tokens at rest | falls back to `JWT_SECRET` | **Yes** in production |
 | `RATE_LIMIT_WINDOW_MS` | Auth rate-limit window | `900000` | No |
 | `RATE_LIMIT_MAX_REQUESTS` | Auth rate-limit max | `100` (auth routes cap at 30) | No |
