@@ -7,7 +7,7 @@ const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const session = require('express-session');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
@@ -30,14 +30,6 @@ if (isWeakSecret(process.env.JWT_SECRET, ['change-this', 'your-super-secret-jwt-
         process.exit(1);
     }
     logger.warn('JWT_SECRET is using a default value. Set a strong secret in .env.');
-}
-
-if (isWeakSecret(process.env.SESSION_SECRET, ['your-session-secret-key', 'discord-music-panel-secret'])) {
-    if (process.env.NODE_ENV === 'production') {
-        logger.error('Set a real SESSION_SECRET before starting in production.');
-        process.exit(1);
-    }
-    logger.warn('SESSION_SECRET is using a default value. Set a strong secret in .env.');
 }
 
 const app = express();
@@ -64,15 +56,14 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
 }
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'discord-music-panel-secret',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-}));
+
+const staticLimiter = rateLimit({
+    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+    max: 1000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Too many requests, try again later' }
+});
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -100,7 +91,7 @@ setupSocketHandlers(io, botManager, db);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
-    app.get('*', (req, res, next) => {
+    app.get('*', staticLimiter, (req, res, next) => {
         if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
             return next();
         }

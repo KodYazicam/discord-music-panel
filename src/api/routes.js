@@ -28,11 +28,45 @@ const logger = new Logger('API');
  */
 function setupRoutes(app) {
     const router = express.Router();
-    app.use(helmet({ contentSecurityPolicy: false }));
+    const connectSrc = ["'self'", 'ws:', 'wss:'];
+    if (process.env.FRONTEND_URL) connectSrc.push(process.env.FRONTEND_URL);
+    const cspDirectives = process.env.NODE_ENV === 'production'
+        ? {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            mediaSrc: ["'self'", 'https:'],
+            connectSrc,
+            fontSrc: ["'self'", 'data:'],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            frameAncestors: ["'none'"]
+        }
+        : {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+            mediaSrc: ["'self'", 'https:'],
+            connectSrc: [...connectSrc, 'http://localhost:3000', 'http://localhost:4000'],
+            fontSrc: ["'self'", 'data:'],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            frameAncestors: ["'none'"]
+        };
+    app.use(helmet({ contentSecurityPolicy: { directives: cspDirectives } }));
 
     const JWT_SECRET = process.env.JWT_SECRET || 'discord-music-panel-jwt-secret';
     const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
     const maxRequests = Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
+    const apiLimiter = rateLimit({
+        windowMs,
+        max: maxRequests,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { success: false, error: 'Too many requests, try again later' }
+    });
     const authLimiter = rateLimit({
         windowMs,
         max: Math.min(maxRequests, 30),
@@ -40,6 +74,7 @@ function setupRoutes(app) {
         legacyHeaders: false,
         message: { success: false, error: 'Too many attempts, try again later' }
     });
+    router.use(apiLimiter);
 
     // Authentication middleware
     const authMiddleware = (req, res, next) => {
