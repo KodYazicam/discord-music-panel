@@ -17,6 +17,9 @@ All notable changes to this project are documented here. The format follows
 - Replaced the disabled Helmet CSP with explicit development and production policies.
 - Overrode `tar` to `^7.5.21` and `minimatch` to `^11.0.5` for transitive
   install-time dependencies, clearing the remaining Dependabot advisories.
+- Upgraded the frontend to `vite@^6.4.4` and `react-router-dom@^7.18.5`,
+  added a frontend lockfile, and cleared the remaining Vite and React Router
+  advisories. The production frontend build still succeeds.
 
 ## [1.0.0] - 2026-09-20
 
