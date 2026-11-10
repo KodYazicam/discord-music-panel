@@ -15,7 +15,9 @@ COPY package.json ./
 RUN npm install --omit=dev \
     && apt-get purge -y python3-dev build-essential \
     && apt-get autoremove -y \
-    && useradd --create-home --uid 10001 panel
+    && useradd --create-home --uid 10001 panel \
+    && mkdir -p /app/data /app/logs \
+    && chown -R 10001:10001 /app/data /app/logs
 COPY src ./src
 COPY --from=frontend /app/frontend/dist ./frontend/dist
 ENV NODE_ENV=production
