@@ -1067,6 +1067,23 @@ const navigation = [
 
 ---
 
+## 🧪 Testing
+
+The backend test suite uses the built-in `node:test` runner and needs no
+Discord token, network access, or real audio pipeline:
+
+```bash
+npm test
+```
+
+Queue and player lifecycle coverage lives in `tests/music-queue.test.js` and
+`tests/music-bot.test.js`. Those tests mock the Socket.IO emitter, audio player,
+voice connection, `yt-dlp` resource creation, and the database module, so they
+run with `npm ci --ignore-scripts` (the CI configuration) even when the
+`better-sqlite3` native binding has not been compiled.
+
+---
+
 ## 🔧 Troubleshooting
 
 ### Bot doesn't respond to commands
