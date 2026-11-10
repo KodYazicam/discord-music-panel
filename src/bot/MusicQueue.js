@@ -4,6 +4,7 @@
  */
 
 const { createAudioResource, StreamType } = require('@discordjs/voice');
+const { EmbedBuilder } = require('discord.js');
 const ytdlp = require('./ytdlp');
 
 class MusicQueue {

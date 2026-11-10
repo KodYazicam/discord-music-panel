@@ -5,11 +5,24 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Added queue and player lifecycle test coverage under `tests/` using
+  `node:test` with mocked Socket.IO, audio player, voice connection, `yt-dlp`,
+  and database modules. Queue mutations, max size, loop modes, pause/resume,
+  skip, stop, and playback transitions are now covered without network access.
+- Added a Testing section to the README.
+
 ### Changed
 
 - Cleaned up the MIT license file so GitHub detects the license.
 - Added issue templates, pull request template, roadmap, Dependabot, and code of conduct.
 - Removed the unused `express-session` middleware; authentication is JWT bearer-token only.
+
+### Fixed
+
+- Imported `EmbedBuilder` in `src/bot/MusicQueue.js`; the now-playing and queue
+  embeds previously threw a `ReferenceError` when song announcements were enabled.
 
 ### Security
 
