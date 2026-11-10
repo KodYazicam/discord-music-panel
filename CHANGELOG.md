@@ -15,6 +15,15 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Docker Compose now includes an optional `bot` profile that runs the panel plus
+  one standalone bot (`docker compose --profile bot up --build`). The bot keeps
+  its own `bot-data` and `bot-logs` volumes so it never shares SQLite with the
+  panel. `.env.example` and the README document `DISCORD_TOKEN`, `BOT_NAME`, and
+  `BOT_PREFIX`.
+- The image creates `/app/data` and `/app/logs` with ownership for UID 10001
+  before dropping privileges, so first-run named volumes are writable.
+- Added deployment tests covering compose services, profile isolation, separate
+  volumes, image permissions, and absence of committed tokens.
 - Cleaned up the MIT license file so GitHub detects the license.
 - Added issue templates, pull request template, roadmap, Dependabot, and code of conduct.
 - Removed the unused `express-session` middleware; authentication is JWT bearer-token only.

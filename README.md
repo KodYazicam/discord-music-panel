@@ -93,6 +93,14 @@ docker compose up --build
 
 The image includes Node, ffmpeg, and yt-dlp. SQLite lives in the `panel-data` volume. First open `/register` — that user becomes admin.
 
+To run the panel together with one standalone bot, set `DISCORD_TOKEN` in `.env` and enable the optional `bot` profile:
+
+```bash
+docker compose --profile bot up --build
+```
+
+The bot runs `src/bot/standalone.js` with its own `bot-data` and `bot-logs` volumes, so it never shares the panel's SQLite file. By default `docker compose up` starts only the panel. The image runs as UID 10001 and creates `/app/data` and `/app/logs` with that ownership, so new named volumes are writable on first start.
+
 ---
 
 ## ⚙️ Configuration

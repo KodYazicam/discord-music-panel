@@ -1,6 +1,7 @@
 services:
   panel:
     build: .
+    image: discord-music-panel:local
     ports:
       - "127.0.0.1:4000:4000"
     env_file:
@@ -15,6 +16,28 @@ services:
       - panel-logs:/app/logs
     restart: unless-stopped
 
+  # Optional single bot without the panel UI.
+  # Start with: docker compose --profile bot up --build
+  bot:
+    profiles:
+      - bot
+    build: .
+    image: discord-music-panel:local
+    command: ["node", "src/bot/standalone.js"]
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_PATH: /app/data/bot.sqlite
+      BOT_NAME: ${BOT_NAME:-DockerMusicBot}
+      PREFIX: ${BOT_PREFIX:-!}
+    volumes:
+      - bot-data:/app/data
+      - bot-logs:/app/logs
+    restart: unless-stopped
+
 volumes:
   panel-data:
   panel-logs:
+  bot-data:
+  bot-logs:
