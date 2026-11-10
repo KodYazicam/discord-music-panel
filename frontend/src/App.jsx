@@ -19,6 +19,7 @@ import MusicControl from './pages/MusicControl'
 import Playlists from './pages/Playlists'
 import Statistics from './pages/Statistics'
 import Settings from './pages/Settings'
+import Status from './pages/Status'
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -61,6 +62,9 @@ function PublicRoute({ children }) {
 function App() {
   return (
     <Routes>
+      {/* Public read-only status */}
+      <Route path="/status" element={<Status />} />
+
       {/* Auth Routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={

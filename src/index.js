@@ -91,7 +91,7 @@ setupSocketHandlers(io, botManager, db);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
-    app.get('*', staticLimiter, (req, res, next) => {
+    app.get('/{*splat}', staticLimiter, (req, res, next) => {
         if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
             return next();
         }

@@ -727,16 +727,79 @@ function setupRoutes(app) {
         }
     });
 
-    // ==================== Health Check ====================
+    // ==================== Health & Status ====================
 
     /**
      * GET /api/health - Health check
+     * Probes the database so orchestrators restart a wedged panel.
      */
     router.get('/health', (req, res) => {
+        const db = req.app.get('db');
+        let databaseOk = false;
+
+        try {
+            databaseOk = Boolean(db && typeof db.prepare === 'function' && db.prepare('SELECT 1').get());
+        } catch (error) {
+            logger.error('Health check database probe failed:', error);
+        }
+
+        res.set('Cache-Control', 'no-store');
+
+        if (!databaseOk) {
+            return res.status(503).json({
+                success: false,
+                status: 'unhealthy'
+            });
+        }
+
         res.json({
             success: true,
             status: 'healthy'
         });
+    });
+
+    /**
+     * GET /api/status - Public read-only status
+     * Only allowlisted, non-sensitive fields leave the process.
+     */
+    router.get('/status', (req, res) => {
+        const botManager = req.app.get('botManager');
+
+        try {
+            const global = botManager?.getGlobalStats?.() || {};
+            const bots = (botManager?.getAllBots?.() || []).map((bot) => ({
+                id: bot.id,
+                name: bot.name,
+                status: bot.status === 'online' ? 'online' : 'offline',
+                guildCount: Number(bot.guildCount) || 0,
+                playingCount: Number(bot.playingCount) || 0,
+                totalQueuedSongs: Number(bot.totalQueuedSongs) || 0,
+                uptime: Number(bot.uptime) || 0
+            }));
+
+            res.set('Cache-Control', 'no-store');
+            res.json({
+                success: true,
+                status: 'ok',
+                version: require('../../package.json').version,
+                uptimeSeconds: Math.floor(process.uptime()),
+                timestamp: new Date().toISOString(),
+                runningBots: Number(global.runningBots) || 0,
+                totalBots: Number(global.totalBots) || bots.length,
+                totalGuilds: Number(global.totalGuilds) || 0,
+                totalPlaying: Number(global.totalPlaying) || 0,
+                totalQueued: Number(global.totalQueued) || 0,
+                totalUsers: Number(global.totalUsers) || 0,
+                bots
+            });
+        } catch (error) {
+            logger.error('Status endpoint failed:', error);
+            res.set('Cache-Control', 'no-store');
+            res.status(503).json({
+                success: false,
+                status: 'unavailable'
+            });
+        }
     });
 
     // Mount router
