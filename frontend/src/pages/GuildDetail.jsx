@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useBotStore } from '../stores/botStore'
 import { useMusicStore } from '../stores/musicStore'
+import api from '../utils/api'
 import {
+  AlertTriangle,
   ArrowLeft,
   Server,
   Settings,
@@ -10,10 +12,7 @@ import {
   Users,
   Activity,
   Volume2,
-  Clock,
   Save,
-  Hash,
-  MessageSquare,
   Sliders
 } from 'lucide-react'
 
@@ -24,16 +23,16 @@ function GuildDetail() {
   
   const [guild, setGuild] = useState(null)
   const [settings, setSettings] = useState({
-    defaultVolume: 100,
-    maxQueueSize: 100,
-    djRoleId: '',
-    textChannelId: '',
-    announceTrack: true,
-    autoLeave: true,
-    autoLeaveTimeout: 300
+    volume: 100,
+    maxQueueSize: 500,
+    defaultLoopMode: 'off',
+    announceSongs: true,
+    stayInChannel: false
   })
   const [isEditing, setIsEditing] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -43,23 +42,55 @@ function GuildDetail() {
   const loadData = async () => {
     setIsLoading(true)
     
-    await fetchBot(botId)
+    const botResult = await fetchBot(botId)
+    const bot = botResult?.bot
     const guildsResult = await fetchBotGuilds(botId)
     
     if (guildsResult.success) {
       const foundGuild = guildsResult.guilds.find(g => g.id === guildId)
       setGuild(foundGuild)
     }
-    
+
+    let presets = {}
+    try {
+      const presetResponse = await api.get(`/bots/${botId}/guilds/${guildId}/presets`)
+      presets = presetResponse.data.presets || {}
+    } catch (error) {
+      // A guild row may not exist until the bot reconnects; keep bot defaults.
+      if (error.response?.status !== 404) {
+        setSaveError(error.response?.data?.error || 'Could not load playback presets')
+      }
+    }
+
+    setSettings({
+      volume: bot?.volume ?? 100,
+      maxQueueSize: bot?.maxQueueSize ?? 500,
+      defaultLoopMode: 'off',
+      announceSongs: bot?.announceSongs ?? true,
+      stayInChannel: bot?.stayInChannel ?? false,
+      ...presets
+    })
+
     await fetchQueue(botId, guildId)
     setIsLoading(false)
   }
 
   const handleSave = async () => {
-    // Normalde API'ye kayıt isteği gönderilir
-    setSaveSuccess(true)
-    setIsEditing(false)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    setSaveError('')
+    setSaveSuccess(false)
+    setIsSaving(true)
+
+    try {
+      const response = await api.put(`/bots/${botId}/guilds/${guildId}/presets`, settings)
+      setSettings(prev => ({ ...prev, ...response.data.presets }))
+      setSaveSuccess(true)
+      setIsEditing(false)
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (error) {
+      setSaveError(error.response?.data?.error || 'Could not save playback presets')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (isLoading) {
@@ -127,10 +158,16 @@ function GuildDetail() {
         </div>
       </div>
 
-      {/* Success Message */}
+      {/* Success / Error Messages */}
       {saveSuccess && (
         <div className="p-3 bg-discord-green/10 border border-discord-green/30 rounded-md text-discord-green text-sm">
-          Settings saved successfully
+          Playback preset saved
+        </div>
+      )}
+      {saveError && (
+        <div className="p-3 bg-discord-red/10 border border-discord-red/30 rounded-md text-discord-red text-sm flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          {saveError}
         </div>
       )}
 
@@ -170,13 +207,18 @@ function GuildDetail() {
             )}
           </div>
 
-          {/* Settings */}
+          {/* Playback preset */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Server Settings
-              </h2>
+              <div>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Playback Preset
+                </h2>
+                <p className="text-xs text-discord-muted mt-1">
+                  Applies to this server only. Other defaults live in Bot Settings.
+                </p>
+              </div>
               {!isEditing ? (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -189,15 +231,17 @@ function GuildDetail() {
                   <button
                     onClick={() => setIsEditing(false)}
                     className="btn btn-secondary text-sm"
+                    disabled={isSaving}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSave}
                     className="btn btn-primary text-sm flex items-center gap-1"
+                    disabled={isSaving}
                   >
                     <Save className="w-4 h-4" />
-                    Save
+                    {isSaving ? 'Saving...' : 'Save'}
                   </button>
                 </div>
               )}
@@ -206,36 +250,38 @@ function GuildDetail() {
             <div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="label flex items-center gap-2">
+                  <label htmlFor="preset-volume" className="label flex items-center gap-2">
                     <Volume2 className="w-4 h-4" />
                     Default Volume
                   </label>
                   {isEditing ? (
                     <input
+                      id="preset-volume"
                       type="number"
                       min="0"
-                      max="100"
-                      value={settings.defaultVolume}
-                      onChange={(e) => setSettings({ ...settings, defaultVolume: parseInt(e.target.value) })}
+                      max="200"
+                      value={settings.volume}
+                      onChange={(e) => setSettings({ ...settings, volume: parseInt(e.target.value, 10) })}
                       className="input"
                     />
                   ) : (
-                    <p className="text-discord-text">{settings.defaultVolume}%</p>
+                    <p className="text-discord-text">{settings.volume}%</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="label flex items-center gap-2">
+                  <label htmlFor="preset-max-queue" className="label flex items-center gap-2">
                     <Music className="w-4 h-4" />
                     Max Queue Size
                   </label>
                   {isEditing ? (
                     <input
+                      id="preset-max-queue"
                       type="number"
                       min="1"
-                      max="1000"
+                      max="500"
                       value={settings.maxQueueSize}
-                      onChange={(e) => setSettings({ ...settings, maxQueueSize: parseInt(e.target.value) })}
+                      onChange={(e) => setSettings({ ...settings, maxQueueSize: parseInt(e.target.value, 10) })}
                       className="input"
                     />
                   ) : (
@@ -244,41 +290,25 @@ function GuildDetail() {
                 </div>
 
                 <div>
-                  <label className="label flex items-center gap-2">
-                    <Hash className="w-4 h-4" />
-                    DJ Role
-                  </label>
+                  <label htmlFor="preset-loop" className="label">Default Loop Mode</label>
                   {isEditing ? (
-                    <input
-                      type="text"
-                      value={settings.djRoleId}
-                      onChange={(e) => setSettings({ ...settings, djRoleId: e.target.value })}
+                    <select
+                      id="preset-loop"
+                      value={settings.defaultLoopMode}
+                      onChange={(e) => setSettings({ ...settings, defaultLoopMode: e.target.value })}
                       className="input"
-                      placeholder="Role ID"
-                    />
+                    >
+                      <option value="off">Off</option>
+                      <option value="track">Current track</option>
+                      <option value="queue">Whole queue</option>
+                    </select>
                   ) : (
                     <p className="text-discord-text">
-                      {settings.djRoleId || <span className="text-discord-muted">Not set</span>}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="label flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    Music Channel
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      value={settings.textChannelId}
-                      onChange={(e) => setSettings({ ...settings, textChannelId: e.target.value })}
-                      className="input"
-                      placeholder="Channel ID"
-                    />
-                  ) : (
-                    <p className="text-discord-text">
-                      {settings.textChannelId || <span className="text-discord-muted">All channels</span>}
+                      {settings.defaultLoopMode === 'track'
+                        ? 'Current track'
+                        : settings.defaultLoopMode === 'queue'
+                          ? 'Whole queue'
+                          : 'Off'}
                     </p>
                   )}
                 </div>
@@ -289,45 +319,24 @@ function GuildDetail() {
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={settings.announceTrack}
-                      onChange={(e) => isEditing && setSettings({ ...settings, announceTrack: e.target.checked })}
+                      checked={settings.announceSongs}
+                      onChange={(e) => isEditing && setSettings({ ...settings, announceSongs: e.target.checked })}
                       disabled={!isEditing}
                       className="w-4 h-4 rounded border-discord-lightest"
                     />
-                    <span className="text-discord-text">Announce when new track plays</span>
+                    <span className="text-discord-text">Announce when a new track plays</span>
                   </label>
 
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={settings.autoLeave}
-                      onChange={(e) => isEditing && setSettings({ ...settings, autoLeave: e.target.checked })}
+                      checked={settings.stayInChannel}
+                      onChange={(e) => isEditing && setSettings({ ...settings, stayInChannel: e.target.checked })}
                       disabled={!isEditing}
                       className="w-4 h-4 rounded border-discord-lightest"
                     />
-                    <span className="text-discord-text">Leave voice channel when queue is empty</span>
+                    <span className="text-discord-text">Stay in voice channel when the queue ends</span>
                   </label>
-
-                  {settings.autoLeave && (
-                    <div className="ml-7">
-                      <label className="label flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
-                        Wait before leaving (seconds)
-                      </label>
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          min="0"
-                          max="3600"
-                          value={settings.autoLeaveTimeout}
-                          onChange={(e) => setSettings({ ...settings, autoLeaveTimeout: parseInt(e.target.value) })}
-                          className="input w-32"
-                        />
-                      ) : (
-                        <p className="text-discord-text">{settings.autoLeaveTimeout} seconds</p>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

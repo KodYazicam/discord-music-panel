@@ -23,6 +23,9 @@ class MusicQueue {
         this.isPlaying = false;
         this.isPaused = false;
         this.volume = config.volume || 100;
+        this.maxQueueSize = config.maxQueueSize ?? 500;
+        this.announceSongs = config.announceSongs;
+        this.stayInChannel = config.stayInChannel;
         
         // Loop modes
         this.loop = false; // Loop current track
@@ -45,7 +48,7 @@ class MusicQueue {
      */
     async search(query) {
         try {
-            const limit = /^https?:\/\//i.test(query) ? this.config.maxQueueSize || 50 : 1;
+            const limit = /^https?:\/\//i.test(query) ? this.maxQueueSize || 50 : 1;
             return await ytdlp.resolveQuery(query, limit);
         } catch (error) {
             this.logger.error('Search error:', error);
@@ -94,8 +97,8 @@ class MusicQueue {
      * Add track to queue
      */
     addTrack(track, position = -1) {
-        if (this.tracks.length >= this.config.maxQueueSize) {
-            throw new Error(`Queue is full (max ${this.config.maxQueueSize} tracks)`);
+        if (this.tracks.length >= this.maxQueueSize) {
+            throw new Error(`Queue is full (max ${this.maxQueueSize} tracks)`);
         }
         
         if (position >= 0 && position < this.tracks.length) {

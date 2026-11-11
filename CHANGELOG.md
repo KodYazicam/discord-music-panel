@@ -17,6 +17,11 @@ All notable changes to this project are documented here. The format follows
   IDs, guild names, queue contents, or settings.
 - `GET /api/health` now probes SQLite and returns 503 when the database is
   unavailable, so Docker restarts a wedged panel instead of reporting healthy.
+- Added per-guild playback presets (`volume`, `maxQueueSize`,
+  `defaultLoopMode`, `announceSongs`, `stayInChannel`) with validated
+  `GET`/`PUT /api/bots/:id/guilds/:guildId/presets`, SQLite persistence, and
+  immediate application to active queues. The server detail page now saves a
+  real playback preset instead of showing a fake success message.
 
 ### Changed
 

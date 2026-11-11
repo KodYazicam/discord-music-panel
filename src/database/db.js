@@ -8,6 +8,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const { Logger } = require('../utils/Logger');
 const { encryptSecret, decryptSecret } = require('../utils/crypto');
+const { parseStoredPresets } = require('../utils/presets');
 
 const logger = new Logger('Database');
 
@@ -96,10 +97,17 @@ function initDatabase() {
             prefix_override TEXT,
             dj_role_override TEXT,
             volume_override INTEGER,
+            presets TEXT DEFAULT '{}',
             FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE,
             UNIQUE(bot_id, guild_id)
         )
     `);
+
+    try {
+        db.exec("ALTER TABLE bot_guilds ADD COLUMN presets TEXT DEFAULT '{}'");
+    } catch {
+        // already migrated
+    }
 
     // Playlists - Saved playlists
     db.exec(`
@@ -318,6 +326,17 @@ const guildOperations = {
 
     getSettings: (botId, guildId) => {
         return db.prepare('SELECT * FROM bot_guilds WHERE bot_id = ? AND guild_id = ?').get(botId, guildId);
+    },
+
+    getPresets: (botId, guildId) => {
+        const row = db.prepare('SELECT presets FROM bot_guilds WHERE bot_id = ? AND guild_id = ?').get(botId, guildId);
+        if (!row) return null;
+        return parseStoredPresets(row.presets);
+    },
+
+    updatePresets: (botId, guildId, presets) => {
+        const stmt = db.prepare('UPDATE bot_guilds SET presets = ? WHERE bot_id = ? AND guild_id = ?');
+        return stmt.run(JSON.stringify(presets), botId, guildId);
     },
 
     updateSettings: (botId, guildId, settings) => {
