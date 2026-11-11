@@ -12,6 +12,11 @@ All notable changes to this project are documented here. The format follows
   and database modules. Queue mutations, max size, loop modes, pause/resume,
   skip, stop, and playback transitions are now covered without network access.
 - Added a Testing section to the README.
+- Added a public read-only `/status` page and `GET /api/status`, showing
+  aggregate counters and an allowlisted per-bot summary without tokens, client
+  IDs, guild names, queue contents, or settings.
+- `GET /api/health` now probes SQLite and returns 503 when the database is
+  unavailable, so Docker restarts a wedged panel instead of reporting healthy.
 
 ### Changed
 
@@ -30,6 +35,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Production mode crashed at startup because Express 5 rejects the bare `'*'`
+  route. The SPA fallback now uses `'/{*splat}'`, so `NODE_ENV=production`
+  boots and serves `/status` and other client-side routes.
 - Imported `EmbedBuilder` in `src/bot/MusicQueue.js`; the now-playing and queue
   embeds previously threw a `ReferenceError` when song announcements were enabled.
 
