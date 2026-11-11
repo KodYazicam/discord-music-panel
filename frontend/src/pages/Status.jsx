@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Activity,
+  AlertTriangle,
   Bot,
   Clock,
   Music,
   RefreshCw,
   Server,
+  Terminal,
   Users,
   Wifi,
   WifiOff
@@ -165,6 +167,32 @@ function Status() {
               <StatCard label="Reachable users" value={status.totalUsers} icon={Users} tone="text-discord-purple" />
               <StatCard label="Panel uptime" value={formatUptime(status.uptimeSeconds)} icon={Clock} />
             </section>
+
+            {status.ytDlp && (
+              <section
+                aria-label="yt-dlp dependency"
+                className={`card flex items-start gap-3 ${status.ytDlp.available ? '' : 'border border-discord-red/40'}`}
+              >
+                {status.ytDlp.available ? (
+                  <Terminal className="w-5 h-5 text-discord-green mt-0.5" aria-hidden="true" />
+                ) : (
+                  <AlertTriangle className="w-5 h-5 text-discord-red mt-0.5" aria-hidden="true" />
+                )}
+                <div className="flex-1">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 className="text-lg font-semibold text-white">yt-dlp</h2>
+                    <span className={`text-xs font-medium ${status.ytDlp.available ? 'text-discord-green' : 'text-discord-red'}`}>
+                      {status.ytDlp.available ? 'Available' : 'Unavailable'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-discord-muted mt-1">
+                    {status.ytDlp.available
+                      ? `Version ${status.ytDlp.version}`
+                      : status.ytDlp.error || 'Playback will fail until yt-dlp is installed.'}
+                  </p>
+                </div>
+              </section>
+            )}
 
             <section aria-labelledby="bots-heading" className="card">
               <div className="flex items-center gap-2 mb-4">

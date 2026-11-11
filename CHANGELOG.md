@@ -17,6 +17,9 @@ All notable changes to this project are documented here. The format follows
   IDs, guild names, queue contents, or settings.
 - `GET /api/health` now probes SQLite and returns 503 when the database is
   unavailable, so Docker restarts a wedged panel instead of reporting healthy.
+- Added a cached yt-dlp health probe (`--version`, 5s timeout) exposed as
+  `ytDlp` in `GET /api/status`, shown on the `/status` page, and logged once at
+  startup with an actionable warning when the binary is missing or broken.
 - Added per-guild playback presets (`volume`, `maxQueueSize`,
   `defaultLoopMode`, `announceSongs`, `stayInChannel`) with validated
   `GET`/`PUT /api/bots/:id/guilds/:guildId/presets`, SQLite persistence, and

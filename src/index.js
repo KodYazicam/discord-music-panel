@@ -15,6 +15,7 @@ const { initDatabase } = require('./database/db');
 const { BotManager } = require('./bot/BotManager');
 const { setupRoutes } = require('./api/routes');
 const { setupSocketHandlers } = require('./api/socket');
+const { checkYtDlpHealth } = require('./bot/ytdlp');
 const { Logger } = require('./utils/Logger');
 
 const logger = new Logger('Main');
@@ -88,6 +89,15 @@ setupRoutes(app);
 
 // Setup Socket.io handlers
 setupSocketHandlers(io, botManager, db);
+
+// Report yt-dlp availability once at startup without blocking the server.
+checkYtDlpHealth().then((health) => {
+    if (health.available) {
+        logger.info(`yt-dlp ${health.version} is available`);
+    } else {
+        logger.warn(`yt-dlp is unavailable: ${health.error}`);
+    }
+});
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

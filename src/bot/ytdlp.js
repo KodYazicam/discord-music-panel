@@ -19,6 +19,99 @@ function bin() {
     return process.env.YTDLP_PATH || 'yt-dlp';
 }
 
+const HEALTH_CACHE_MS = 30_000;
+let healthCache = null;
+let healthCacheAt = 0;
+
+function healthTimeoutMs() {
+    const value = Number(process.env.YTDLP_HEALTH_TIMEOUT_MS);
+    if (!Number.isFinite(value) || value <= 0) return 5000;
+    return Math.min(Math.max(value, 100), 15_000);
+}
+
+/**
+ * Check that the configured yt-dlp binary exists and reports a version.
+ * Never rejects: callers get an availability object they can expose safely.
+ * Results are cached briefly so public status polling does not spawn processes.
+ */
+function checkYtDlpHealth({ force = false } = {}) {
+    if (!force && healthCache && Date.now() - healthCacheAt < HEALTH_CACHE_MS) {
+        return Promise.resolve({ ...healthCache });
+    }
+
+    return new Promise((resolve) => {
+        const finish = (result) => {
+            healthCache = { ...result, checkedAt: Date.now() };
+            healthCacheAt = Date.now();
+            resolve({ ...healthCache });
+        };
+
+        let child;
+        try {
+            child = spawn(bin(), ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
+        } catch (error) {
+            finish({ available: false, version: null, error: error.message });
+            return;
+        }
+
+        let out = '';
+        let err = '';
+        let settled = false;
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            child.kill('SIGKILL');
+            finish({ available: false, version: null, error: 'yt-dlp health check timed out' });
+        }, healthTimeoutMs());
+
+        child.stdout.on('data', (chunk) => {
+            if (out.length < 1024) out += chunk;
+        });
+        child.stderr.on('data', (chunk) => {
+            if (err.length < 4096) err += chunk;
+        });
+        child.on('error', (error) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (error.code === 'ENOENT') {
+                finish({
+                    available: false,
+                    version: null,
+                    error: 'yt-dlp is not installed. Install it with: pipx install yt-dlp'
+                });
+                return;
+            }
+            finish({ available: false, version: null, error: error.message });
+        });
+        child.on('close', (code) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+
+            const version = out.trim().split('\n')[0].slice(0, 200);
+            if (code !== 0) {
+                const reason = err.trim().split('\n').pop() || `yt-dlp exited ${code}`;
+                finish({ available: false, version: null, error: reason });
+                return;
+            }
+            if (!version) {
+                finish({ available: false, version: null, error: 'yt-dlp returned an empty version' });
+                return;
+            }
+            finish({ available: true, version, error: null });
+        });
+    });
+}
+
+/**
+ * Clear the health cache. Used by tests.
+ */
+function resetYtDlpHealthCache() {
+    healthCache = null;
+    healthCacheAt = 0;
+}
+
 function cookieArgs() {
     const cookie = process.env.YOUTUBE_COOKIE;
     if (!cookie) return [];
@@ -157,4 +250,12 @@ function stream(url) {
     return child;
 }
 
-module.exports = { resolveQuery, stream, formatDuration, assertAllowedQuery, ALLOWED_HOSTS };
+module.exports = {
+    resolveQuery,
+    stream,
+    formatDuration,
+    assertAllowedQuery,
+    checkYtDlpHealth,
+    resetYtDlpHealthCache,
+    ALLOWED_HOSTS
+};

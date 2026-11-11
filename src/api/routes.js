@@ -21,6 +21,7 @@ const { Logger } = require('../utils/Logger');
 const { userOperations, botOperations, statisticsOperations, playlistOperations, settingOperations, guildOperations } = require('../database/db');
 const { isAdmin, requireBotAccess } = require('../utils/access');
 const { normalizePresets, PresetValidationError } = require('../utils/presets');
+const { checkYtDlpHealth } = require('../bot/ytdlp');
 
 const logger = new Logger('API');
 
@@ -820,8 +821,9 @@ function setupRoutes(app) {
      * GET /api/status - Public read-only status
      * Only allowlisted, non-sensitive fields leave the process.
      */
-    router.get('/status', (req, res) => {
+    router.get('/status', async (req, res) => {
         const botManager = req.app.get('botManager');
+        const checkYtDlp = req.app.get('ytDlpHealth') || checkYtDlpHealth;
 
         try {
             const global = botManager?.getGlobalStats?.() || {};
@@ -834,6 +836,25 @@ function setupRoutes(app) {
                 totalQueuedSongs: Number(bot.totalQueuedSongs) || 0,
                 uptime: Number(bot.uptime) || 0
             }));
+
+            let ytDlp;
+            try {
+                const health = await checkYtDlp();
+                ytDlp = {
+                    available: Boolean(health?.available),
+                    version: health?.version || null,
+                    error: health?.error || null,
+                    checkedAt: health?.checkedAt || null
+                };
+            } catch (error) {
+                logger.error('yt-dlp health check failed:', error);
+                ytDlp = {
+                    available: false,
+                    version: null,
+                    error: 'yt-dlp health check failed',
+                    checkedAt: null
+                };
+            }
 
             res.set('Cache-Control', 'no-store');
             res.json({
@@ -848,6 +869,7 @@ function setupRoutes(app) {
                 totalPlaying: Number(global.totalPlaying) || 0,
                 totalQueued: Number(global.totalQueued) || 0,
                 totalUsers: Number(global.totalUsers) || 0,
+                ytDlp,
                 bots
             });
         } catch (error) {
