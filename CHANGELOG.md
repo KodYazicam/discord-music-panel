@@ -17,6 +17,9 @@ All notable changes to this project are documented here. The format follows
   IDs, guild names, queue contents, or settings.
 - `GET /api/health` now probes SQLite and returns 503 when the database is
   unavailable, so Docker restarts a wedged panel instead of reporting healthy.
+- Added auth and rate-limit tests covering registration, login, `/api/auth/me`,
+  admin-only `/api/users`, and the global 429 response, using an in-memory
+  database stub.
 - Added a cached yt-dlp health probe (`--version`, 5s timeout) exposed as
   `ytDlp` in `GET /api/status`, shown on the `/status` page, and logged once at
   startup with an actionable warning when the binary is missing or broken.
