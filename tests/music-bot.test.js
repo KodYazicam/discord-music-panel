@@ -11,6 +11,10 @@ require.cache[dbModulePath] = {
     exports: {
         guildOperations: {
             getSettings: () => null,
+            getPresets: () => {
+                if (presetStore.error) throw presetStore.error;
+                return presetStore.value;
+            },
             upsert: () => {},
             remove: () => {}
         },
@@ -23,6 +27,8 @@ const { MusicBot } = require('../src/bot/MusicBot');
 const { MusicQueue } = require('../src/bot/MusicQueue');
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
+
+const presetStore = { value: {}, error: null };
 
 function createIo() {
     const emitted = [];
@@ -421,4 +427,101 @@ test('leaveVoice destroys the connection and clears queue state', (t) => {
     assert.equal(bot.queues.has(guildId), false);
     assert.deepEqual(queue.tracks, []);
     assert.ok(io.emitted.find(event => event.name === 'queue:cleared'));
+});
+
+test('applyPresetsToQueue applies allowlisted fields to a queue', (t) => {
+    const { bot, guildId, attachQueue } = createHarness(t);
+    const queue = attachQueue([makeTrack(1)]);
+
+    bot.applyPresetsToQueue(queue, {
+        volume: 65,
+        maxQueueSize: 3,
+        defaultLoopMode: 'queue',
+        announceSongs: false,
+        stayInChannel: true,
+        ignored: 'value'
+    });
+
+    assert.equal(queue.volume, 65);
+    assert.equal(queue.maxQueueSize, 3);
+    assert.equal(queue.loop, false);
+    assert.equal(queue.loopQueue, true);
+    assert.equal(queue.announceSongs, false);
+    assert.equal(queue.stayInChannel, true);
+    assert.equal('ignored' in queue, false);
+});
+
+test('applyPresetsToQueue switches between track and queue loop modes', (t) => {
+    const { bot, guildId, attachQueue } = createHarness(t);
+    const queue = attachQueue([]);
+
+    bot.applyPresetsToQueue(queue, { defaultLoopMode: 'track' });
+    assert.equal(queue.loop, true);
+    assert.equal(queue.loopQueue, false);
+
+    bot.applyPresetsToQueue(queue, { defaultLoopMode: 'off' });
+    assert.equal(queue.loop, false);
+    assert.equal(queue.loopQueue, false);
+});
+
+function stubQueueIo(t, tracks) {
+    const originalSearch = MusicQueue.prototype.search;
+    const originalCreateResource = MusicQueue.prototype.createResource;
+
+    MusicQueue.prototype.search = async () => tracks;
+    MusicQueue.prototype.createResource = async () => createResource();
+
+    t.after(() => {
+        MusicQueue.prototype.search = originalSearch;
+        MusicQueue.prototype.createResource = originalCreateResource;
+    });
+}
+
+test('play applies saved guild presets to a newly created queue', async (t) => {
+    presetStore.value = {
+        volume: 40,
+        maxQueueSize: 3,
+        defaultLoopMode: 'queue',
+        announceSongs: false,
+        stayInChannel: true
+    };
+    t.after(() => {
+        presetStore.value = {};
+    });
+
+    const { bot, guildId, attachPlayer, attachConnection, attachGuild } = createHarness(t);
+    const { voiceChannel } = attachGuild();
+    attachPlayer();
+    attachConnection();
+    stubQueueIo(t, [makeTrack(1)]);
+
+    const result = await bot.play(guildId, 'query', voiceChannel.id);
+
+    assert.equal(result.success, true);
+    const queue = bot.queues.get(guildId);
+    assert.equal(queue.volume, 40);
+    assert.equal(queue.maxQueueSize, 3);
+    assert.equal(queue.loopQueue, true);
+    assert.equal(queue.announceSongs, false);
+    assert.equal(queue.stayInChannel, true);
+});
+
+test('play keeps bot defaults when preset loading fails', async (t) => {
+    presetStore.error = new Error('database offline');
+    t.after(() => {
+        presetStore.error = null;
+    });
+
+    const { bot, guildId, attachPlayer, attachConnection, attachGuild } = createHarness(t);
+    const { voiceChannel } = attachGuild();
+    attachPlayer();
+    attachConnection();
+    stubQueueIo(t, [makeTrack(1)]);
+
+    const result = await bot.play(guildId, 'query', voiceChannel.id);
+
+    assert.equal(result.success, true);
+    const queue = bot.queues.get(guildId);
+    assert.equal(queue.volume, 100);
+    assert.equal(queue.maxQueueSize, 10);
 });

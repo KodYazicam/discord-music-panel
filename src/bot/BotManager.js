@@ -358,6 +358,19 @@ class BotManager {
     }
 
     /**
+     * Apply saved presets to an active guild queue, if one exists.
+     * Returns true when a running queue was updated.
+     */
+    applyGuildPresets(botId, guildId, presets) {
+        const bot = this.bots.get(botId);
+        const queue = bot?.queues?.get(guildId);
+        if (!queue) return false;
+
+        bot.applyPresetsToQueue(queue, presets);
+        return true;
+    }
+
+    /**
      * Get running bot count
      */
     getRunningCount() {

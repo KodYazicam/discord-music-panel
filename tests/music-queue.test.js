@@ -94,6 +94,15 @@ test('addTrack rejects a full queue without mutating it', () => {
     assert.equal(queue.tracks.length, 2);
 });
 
+test('addTrack respects a maxQueueSize lowered after construction', () => {
+    const { queue } = makeQueue({ maxQueueSize: 5 });
+    queue.maxQueueSize = 1;
+    queue.addTrack(makeTrack(1));
+
+    assert.throws(() => queue.addTrack(makeTrack(2)), /Queue is full \(max 1 tracks\)/);
+    assert.equal(queue.tracks.length, 1);
+});
+
 test('removeTrack removes and returns the track at the index', () => {
     const { queue } = makeQueue();
     const first = makeTrack(1);

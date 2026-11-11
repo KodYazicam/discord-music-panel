@@ -44,6 +44,7 @@ Read [SECURITY.md](./SECURITY.md) before you publish the port.
 - **AuthZ**: non-admin users only see and control bots they created
 - **Tokens at rest**: AES-256-GCM (`TOKEN_ENCRYPTION_KEY`)
 - **Playlists**: IDOR-safe (owner or admin)
+- **Per-guild presets**: validated volume, queue size, loop mode, announcements, and stay-in-channel overrides persisted in SQLite
 - **Real-time**: Socket.IO (`bot:status`, `music:queueUpdate`, `music:trackStart`, plus the older `bot:update` / `queue:update` names)
 - **Web dashboard**: React + TailwindCSS. Bot Settings persist in `bots.extra_settings` (JSON), not a fake success toast. Token changes require a restart.
 - **User management**: first account is admin; later signups stay closed until an admin opens them
@@ -820,6 +821,29 @@ POST /api/bots/:id/start
 Authorization: Bearer <token>
 ```
 
+### Per-guild playback presets
+
+```http
+GET /api/bots/:id/guilds/:guildId/presets
+Authorization: Bearer <token>
+```
+
+```http
+PUT /api/bots/:id/guilds/:guildId/presets
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "volume": 60,
+  "maxQueueSize": 50,
+  "defaultLoopMode": "off",
+  "announceSongs": false,
+  "stayInChannel": true
+}
+```
+
+All fields are optional; only the allowlisted keys above are accepted. `volume` is an integer `0-200`, `maxQueueSize` is `1-500`, and `defaultLoopMode` is `off`, `track`, or `queue`. Unknown keys and invalid values return `400`. Presets apply when a guild queue is created and immediately to an active queue; the response reports `appliedToActiveQueue`.
+
 ### Music
 
 There is no `/api/music/...` tree. Playback goes through the bot command endpoint.
@@ -964,17 +988,24 @@ CREATE TABLE bots (
 );
 ```
 
-### Guild Settings Table
+### Bot Guilds Table
 ```sql
-CREATE TABLE guild_settings (
+CREATE TABLE bot_guilds (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  bot_id TEXT,
-  guild_id TEXT,
-  settings TEXT DEFAULT '{}',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (bot_id) REFERENCES bots(id)
+  bot_id TEXT NOT NULL,
+  guild_id TEXT NOT NULL,
+  guild_name TEXT,
+  member_count INTEGER DEFAULT 0,
+  joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  prefix_override TEXT,
+  dj_role_override TEXT,
+  volume_override INTEGER,
+  presets TEXT DEFAULT '{}',
+  FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE,
+  UNIQUE(bot_id, guild_id)
 );
 ```
+`presets` stores the validated per-guild playback preset JSON described in the API Reference.
 
 ### Playlists Table
 ```sql

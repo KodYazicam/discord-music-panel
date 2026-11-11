@@ -197,7 +197,9 @@ class MusicBot {
             }
 
             // Check if channel became empty
-            if (oldState.channel && !this.config.stayInChannel) {
+            const guildQueue = this.queues.get(oldState.guild.id);
+            const stayInChannel = guildQueue?.stayInChannel ?? this.config.stayInChannel;
+            if (oldState.channel && !stayInChannel) {
                 const connection = this.connections.get(oldState.guild.id);
                 if (connection && oldState.channel.id === connection.joinConfig.channelId) {
                     const members = oldState.channel.members.filter(m => !m.user.bot);
@@ -498,6 +500,43 @@ class MusicBot {
     // ==================== Music Methods ====================
 
     /**
+     * Apply validated guild presets to a queue.
+     * Unknown or malformed keys are ignored; callers validate writes.
+     */
+    applyPresetsToQueue(queue, presets = {}) {
+        if (!queue || !presets || typeof presets !== 'object') return;
+
+        if (Number.isInteger(presets.volume)) {
+            queue.setVolume(presets.volume);
+        }
+        if (Number.isInteger(presets.maxQueueSize)) {
+            queue.maxQueueSize = presets.maxQueueSize;
+        }
+        if (presets.defaultLoopMode) {
+            queue.loop = presets.defaultLoopMode === 'track';
+            queue.loopQueue = presets.defaultLoopMode === 'queue';
+        }
+        if (typeof presets.announceSongs === 'boolean') {
+            queue.announceSongs = presets.announceSongs;
+        }
+        if (typeof presets.stayInChannel === 'boolean') {
+            queue.stayInChannel = presets.stayInChannel;
+        }
+    }
+
+    /**
+     * Read saved presets for a guild. Database failures fall back to bot defaults.
+     */
+    loadGuildPresets(guildId) {
+        try {
+            return guildOperations.getPresets(this.config.id, guildId) || {};
+        } catch (error) {
+            this.logger.error(`Could not load presets for guild ${guildId}:`, error);
+            return {};
+        }
+    }
+
+    /**
      * Play a track or add to queue
      */
     async play(guildId, query, voiceChannelId, textChannelId) {
@@ -513,6 +552,7 @@ class MusicBot {
         let queue = this.queues.get(guildId);
         if (!queue) {
             queue = new MusicQueue(guildId, this.config, this.io, this.logger);
+            this.applyPresetsToQueue(queue, this.loadGuildPresets(guildId));
             this.queues.set(guildId, queue);
         }
 
@@ -687,7 +727,8 @@ class MusicBot {
             queue.startTime = Date.now();
 
             // Announce song
-            if (this.config.announceSongs && textChannel) {
+            const announceSongs = queue.announceSongs ?? this.config.announceSongs;
+            if (announceSongs && textChannel) {
                 const embed = queue.createNowPlayingEmbed(track);
                 textChannel.send({ embeds: [embed] }).catch(() => {});
             }
@@ -754,7 +795,8 @@ class MusicBot {
             this.emitToGuild(guildId, ['queue:ended', 'music:trackEnd'], {});
             
             // Auto-leave if configured
-            if (!this.config.stayInChannel) {
+            const stayInChannel = queue.stayInChannel ?? this.config.stayInChannel;
+            if (!stayInChannel) {
                 setTimeout(() => {
                     if (!this.queues.get(guildId)?.isPlaying) {
                         this.leaveVoice(guildId);

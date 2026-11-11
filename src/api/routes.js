@@ -18,8 +18,9 @@ try {
     helmet = () => (_req, _res, next) => next();
 }
 const { Logger } = require('../utils/Logger');
-const { userOperations, botOperations, statisticsOperations, playlistOperations, settingOperations } = require('../database/db');
+const { userOperations, botOperations, statisticsOperations, playlistOperations, settingOperations, guildOperations } = require('../database/db');
 const { isAdmin, requireBotAccess } = require('../utils/access');
+const { normalizePresets, PresetValidationError } = require('../utils/presets');
 
 const logger = new Logger('API');
 
@@ -521,6 +522,63 @@ function setupRoutes(app) {
             res.json({ success: true, queue });
         } catch (error) {
             logger.error('Error getting queue:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    /**
+     * GET /api/bots/:id/guilds/:guildId/presets - Get per-guild playback presets
+     */
+    router.get('/bots/:id/guilds/:guildId/presets', authMiddleware, (req, res) => {
+        try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
+
+            const presets = guildOperations.getPresets(req.params.id, req.params.guildId);
+            if (presets === null) {
+                return res.status(404).json({ success: false, error: 'Guild not found' });
+            }
+
+            res.json({ success: true, presets });
+        } catch (error) {
+            logger.error('Error getting guild presets:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    /**
+     * PUT /api/bots/:id/guilds/:guildId/presets - Save per-guild playback presets
+     */
+    router.put('/bots/:id/guilds/:guildId/presets', authMiddleware, (req, res) => {
+        try {
+            const access = requireBotAccess(req, req.params.id);
+            if (access.error) return res.status(access.status).json({ success: false, error: access.error });
+
+            let presets;
+            try {
+                presets = normalizePresets(req.body);
+            } catch (error) {
+                if (error instanceof PresetValidationError) {
+                    return res.status(400).json({ success: false, error: error.message });
+                }
+                throw error;
+            }
+
+            const existing = guildOperations.getPresets(req.params.id, req.params.guildId);
+            if (existing === null) {
+                return res.status(404).json({ success: false, error: 'Guild not found' });
+            }
+
+            guildOperations.updatePresets(req.params.id, req.params.guildId, presets);
+
+            const botManager = req.app.get('botManager');
+            const appliedToActiveQueue = Boolean(
+                botManager?.applyGuildPresets?.(req.params.id, req.params.guildId, presets)
+            );
+
+            res.json({ success: true, presets, appliedToActiveQueue });
+        } catch (error) {
+            logger.error('Error saving guild presets:', error);
             res.status(500).json({ success: false, error: error.message });
         }
     });
