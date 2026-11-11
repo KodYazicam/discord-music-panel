@@ -50,7 +50,7 @@ Read [SECURITY.md](./SECURITY.md) before you publish the port.
 - **User management**: first account is admin; later signups stay closed until an admin opens them
 - **Helmet + rate limit** on `/api/auth/*`
 - **Health**: `GET /api/health` probes SQLite and returns 503 when unhealthy
-- **Public status**: `GET /api/status` and the read-only `/status` page expose aggregate counters and bot names only
+- **Public status**: `GET /api/status` and the read-only `/status` page expose aggregate counters, bot names, and yt-dlp availability
 
 ---
 
@@ -764,7 +764,7 @@ Returns `200 { "success": true, "status": "healthy" }` when a SQLite probe succe
 ```http
 GET /api/status
 ```
-No authentication required. Returns the panel version, uptime, a timestamp, aggregate counters (`runningBots`, `totalBots`, `totalGuilds`, `totalPlaying`, `totalQueued`, `totalUsers`), and an allowlisted bot list (`id`, `name`, `status`, `guildCount`, `playingCount`, `totalQueuedSongs`, `uptime`). Tokens, client IDs, guild names, queue contents, and settings are never included. Responses use `Cache-Control: no-store`.
+No authentication required. Returns the panel version, uptime, a timestamp, aggregate counters (`runningBots`, `totalBots`, `totalGuilds`, `totalPlaying`, `totalQueued`, `totalUsers`), an allowlisted bot list (`id`, `name`, `status`, `guildCount`, `playingCount`, `totalQueuedSongs`, `uptime`), and `ytDlp` (`available`, `version`, `error`, `checkedAt`). The yt-dlp probe runs `yt-dlp --version` with a 5-second timeout and caches its result for 30 seconds. Tokens, client IDs, guild names, queue contents, and settings are never included. Responses use `Cache-Control: no-store`.
 
 The React dashboard serves the same data at `/status`, refreshing every 15 seconds.
 

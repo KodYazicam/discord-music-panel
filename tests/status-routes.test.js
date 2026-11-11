@@ -74,11 +74,17 @@ function sampleBotManager() {
     };
 }
 
-async function startServer(t, { db = healthyDb(), botManager = sampleBotManager() } = {}) {
+async function startServer(t, { db = healthyDb(), botManager = sampleBotManager(), ytDlpHealth } = {}) {
     const app = express();
     app.use(express.json());
     app.set('db', db);
     app.set('botManager', botManager);
+    app.set('ytDlpHealth', ytDlpHealth || (async () => ({
+        available: true,
+        version: '2026.11.01',
+        error: null,
+        checkedAt: 1700000000000
+    })));
     setupRoutes(app);
 
     const server = app.listen(0);
@@ -133,6 +139,13 @@ test('GET /api/status is public and returns aggregate and allowlisted bot data',
     assert.equal(body.totalPlaying, 1);
     assert.equal(body.totalQueued, 4);
     assert.equal(body.totalUsers, 50);
+
+    assert.deepEqual(body.ytDlp, {
+        available: true,
+        version: '2026.11.01',
+        error: null,
+        checkedAt: 1700000000000
+    });
 
     assert.equal(body.bots.length, 2);
     assert.deepEqual(body.bots[0], {
@@ -189,4 +202,44 @@ test('GET /api/status returns 503 when the bot manager throws', async (t) => {
 
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { success: false, status: 'unavailable' });
+});
+
+test('GET /api/status exposes the yt-dlp health result', async (t) => {
+    const base = await startServer(t, {
+        ytDlpHealth: async () => ({
+            available: false,
+            version: null,
+            error: 'yt-dlp is not installed. Install it with: pipx install yt-dlp',
+            checkedAt: 1700000000000
+        })
+    });
+    const response = await fetch(`${base}/api/status`);
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body.ytDlp, {
+        available: false,
+        version: null,
+        error: 'yt-dlp is not installed. Install it with: pipx install yt-dlp',
+        checkedAt: 1700000000000
+    });
+});
+
+test('GET /api/status degrades when the yt-dlp checker throws', async (t) => {
+    const base = await startServer(t, {
+        ytDlpHealth: async () => {
+            throw new Error('spawn failed');
+        }
+    });
+    const response = await fetch(`${base}/api/status`);
+
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.success, true);
+    assert.deepEqual(body.ytDlp, {
+        available: false,
+        version: null,
+        error: 'yt-dlp health check failed',
+        checkedAt: null
+    });
 });

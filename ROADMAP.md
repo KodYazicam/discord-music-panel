@@ -14,7 +14,7 @@ Small, shippable steps. Open an issue if you want something moved up.
 
 - [x] Per-guild playback presets
 - [x] A read-only status page for the panel
-- [ ] Better yt-dlp health checks
+- [x] Better yt-dlp health checks
 
 ## Later
 
