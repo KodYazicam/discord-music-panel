@@ -22,6 +22,7 @@ const { userOperations, botOperations, statisticsOperations, playlistOperations,
 const { isAdmin, requireBotAccess } = require('../utils/access');
 const { normalizePresets, PresetValidationError } = require('../utils/presets');
 const { checkYtDlpHealth } = require('../bot/ytdlp');
+const { metricsEnabled, requestMetricsMiddleware, createMetricsAuth, renderMetrics } = require('./metrics');
 
 const logger = new Logger('API');
 
@@ -58,6 +59,7 @@ function setupRoutes(app) {
             frameAncestors: ["'none'"]
         };
     app.use(helmet({ contentSecurityPolicy: { directives: cspDirectives } }));
+    app.use(requestMetricsMiddleware());
 
     const JWT_SECRET = process.env.JWT_SECRET || 'discord-music-panel-jwt-secret';
     const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
@@ -75,6 +77,13 @@ function setupRoutes(app) {
         standardHeaders: true,
         legacyHeaders: false,
         message: { success: false, error: 'Too many attempts, try again later' }
+    });
+    const metricsLimiter = rateLimit({
+        windowMs,
+        max: Math.max(maxRequests, 600),
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { success: false, error: 'Too many requests, try again later' }
     });
     router.use(apiLimiter);
 
@@ -107,6 +116,32 @@ function setupRoutes(app) {
         if (users === 0) return true;
         return settingOperations.get('registration_open', '0') === '1';
     };
+
+    // ==================== Metrics ====================
+
+    /**
+     * GET /metrics - Optional Prometheus export
+     * Disabled unless METRICS_ENABLED=true. Uses METRICS_TOKEN when set,
+     * otherwise falls back to a panel JWT.
+     */
+    app.get('/metrics', metricsLimiter, createMetricsAuth(authMiddleware), async (req, res) => {
+        if (!metricsEnabled()) {
+            return res.status(404).json({ success: false, error: 'Not found' });
+        }
+
+        try {
+            const body = await renderMetrics({
+                botManager: req.app.get('botManager'),
+                checkYtDlp: req.app.get('ytDlpHealth') || checkYtDlpHealth
+            });
+            res.set('Cache-Control', 'no-store');
+            res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+            res.send(body);
+        } catch (error) {
+            logger.error('Metrics render failed:', error);
+            res.status(500).json({ success: false, error: 'Metrics unavailable' });
+        }
+    });
 
     // ==================== Auth Routes ====================
 

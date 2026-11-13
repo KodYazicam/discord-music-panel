@@ -23,6 +23,10 @@ All notable changes to this project are documented here. The format follows
 - Added a cached yt-dlp health probe (`--version`, 5s timeout) exposed as
   `ytDlp` in `GET /api/status`, shown on the `/status` page, and logged once at
   startup with an actionable warning when the binary is missing or broken.
+- Added optional Prometheus metrics export at `GET /metrics`, disabled by
+  default. When `METRICS_ENABLED=true`, the endpoint requires `METRICS_TOKEN`
+  or a panel JWT and exposes route-based request counters/durations, per-bot
+  queue depth and active players, and yt-dlp availability.
 - Added per-guild playback presets (`volume`, `maxQueueSize`,
   `defaultLoopMode`, `announceSongs`, `stayInChannel`) with validated
   `GET`/`PUT /api/bots/:id/guilds/:guildId/presets`, SQLite persistence, and

@@ -51,6 +51,7 @@ Read [SECURITY.md](./SECURITY.md) before you publish the port.
 - **Helmet + rate limit** on `/api/auth/*`
 - **Health**: `GET /api/health` probes SQLite and returns 503 when unhealthy
 - **Public status**: `GET /api/status` and the read-only `/status` page expose aggregate counters, bot names, and yt-dlp availability
+- **Metrics**: optional Prometheus `GET /metrics` (`METRICS_ENABLED=true`, bearer token or panel JWT)
 
 ---
 
@@ -767,6 +768,22 @@ GET /api/status
 No authentication required. Returns the panel version, uptime, a timestamp, aggregate counters (`runningBots`, `totalBots`, `totalGuilds`, `totalPlaying`, `totalQueued`, `totalUsers`), an allowlisted bot list (`id`, `name`, `status`, `guildCount`, `playingCount`, `totalQueuedSongs`, `uptime`), and `ytDlp` (`available`, `version`, `error`, `checkedAt`). The yt-dlp probe runs `yt-dlp --version` with a 5-second timeout and caches its result for 30 seconds. Tokens, client IDs, guild names, queue contents, and settings are never included. Responses use `Cache-Control: no-store`.
 
 The React dashboard serves the same data at `/status`, refreshing every 15 seconds.
+
+### Prometheus metrics (optional)
+
+**Metrics:**
+```http
+GET /metrics
+Authorization: Bearer <METRICS_TOKEN or panel JWT>
+```
+
+Disabled by default and returns `404` unless `METRICS_ENABLED=true`. When enabled, set `METRICS_TOKEN` to use a dedicated scrape token; if it is empty, a valid panel JWT is required instead. Responses use `Cache-Control: no-store` and the Prometheus text exposition format.
+
+Exported series:
+
+- `http_requests_total{method,route,status}` and `http_request_duration_seconds` (histogram) for route-pattern based request counts and durations.
+- `music_queue_depth{bot_id}` and `music_active_players{bot_id}` from running bots.
+- `ytdlp_available` and `ytdlp_last_check_timestamp_seconds` from the cached yt-dlp health probe.
 
 ### Authentication
 
