@@ -14,6 +14,19 @@ updates:
     commit-message:
       prefix: "deps"
       prefix-development: "deps-dev"
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      frontend-production:
+        dependency-type: production
+      frontend-development:
+        dependency-type: development
+    commit-message:
+      prefix: "deps(frontend)"
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
