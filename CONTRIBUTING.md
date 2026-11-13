@@ -21,11 +21,12 @@ npm test
 
 ## CI
 
-GitHub Actions runs the backend `test` job (`npm ci --ignore-scripts` and
-`npm test`) on every pull request and on pushes to `main`.
+GitHub Actions runs two jobs on every pull request and on pushes to `main`:
 
-Run the same checks locally before opening a pull request, and build the
-frontend when you change it:
+- `test`: `npm ci --ignore-scripts` and `npm test` for the backend.
+- `frontend`: `npm ci` and `npm run build` in `frontend/`, cached with `frontend/package-lock.json`.
+
+Run the same checks locally before opening a pull request:
 
 ```bash
 npm ci --ignore-scripts && npm test

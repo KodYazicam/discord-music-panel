@@ -9,6 +9,32 @@ function read(file) {
     return fs.readFileSync(path.join(root, file), 'utf8');
 }
 
+function jobBlock(workflow, name) {
+    const lines = workflow.split('\n');
+    const start = lines.findIndex(line => line === `  ${name}:`);
+    assert.notEqual(start, -1, `CI job "${name}" is missing`);
+
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+        if (/^  [A-Za-z0-9_.-]+:$/.test(lines[i]) || /^[A-Za-z]/.test(lines[i])) {
+            end = i;
+            break;
+        }
+    }
+
+    return lines.slice(start, end).join('\n');
+}
+
+test('CI builds the frontend with its own lockfile cache key', () => {
+    const workflow = read('.github/workflows/ci.yml');
+    const frontend = jobBlock(workflow, 'frontend');
+
+    assert.match(frontend, /working-directory: frontend/);
+    assert.match(frontend, /cache-dependency-path: frontend\/package-lock\.json/);
+    assert.match(frontend, /- run: npm ci\b/);
+    assert.match(frontend, /- run: npm run build\b/);
+});
+
 test('Dependabot watches both npm lockfiles and groups frontend updates', () => {
     const config = read('.github/dependabot.yml');
 
