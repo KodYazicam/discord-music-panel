@@ -19,6 +19,22 @@ npm test
 - Socket.IO: emit both `bot:status` / `music:*` (frontend) and `bot:update` / `queue:update` (legacy).
 - Keep MIT license on this repo.
 
+## CI
+
+GitHub Actions runs the backend `test` job (`npm ci --ignore-scripts` and
+`npm test`) on every pull request and on pushes to `main`.
+
+Run the same checks locally before opening a pull request, and build the
+frontend when you change it:
+
+```bash
+npm ci --ignore-scripts && npm test
+cd frontend && npm ci && npm run build
+```
+
+Keep both `package-lock.json` files committed. Dependabot updates the root and
+`frontend` npm ecosystems separately.
+
 ## Tests
 
 ```bash

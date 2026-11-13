@@ -40,6 +40,9 @@ All notable changes to this project are documented here. The format follows
   before dropping privileges, so first-run named volumes are writable.
 - Added deployment tests covering compose services, profile isolation, separate
   volumes, image permissions, and absence of committed tokens.
+- Dependabot now watches the `/frontend` npm ecosystem with weekly, grouped
+  updates and the `deps(frontend)` commit prefix. Backend `dotenv` and
+  `express-rate-limit` patch updates are included.
 - Cleaned up the MIT license file so GitHub detects the license.
 - Added issue templates, pull request template, roadmap, Dependabot, and code of conduct.
 - Removed the unused `express-session` middleware; authentication is JWT bearer-token only.
