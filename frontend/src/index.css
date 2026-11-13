@@ -1,6 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@theme {
+  --color-discord-primary: #5865F2;
+  --color-discord-green: #57F287;
+  --color-discord-yellow: #FEE75C;
+  --color-discord-fuchsia: #EB459E;
+  --color-discord-red: #ED4245;
+  --color-discord-dark: #23272A;
+  --color-discord-darker: #1E2124;
+  --color-discord-darkest: #0D0D0D;
+  --color-discord-light: #2C2F33;
+  --color-discord-lighter: #36393F;
+  --color-discord-lightest: #40444B;
+  --color-discord-text: #DCDDDE;
+  --color-discord-muted: #72767D;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-bounce-slow: bounce 2s infinite;
+}
 
 @layer base {
   * {
@@ -39,7 +58,7 @@
   }
   
   .btn-primary {
-    @apply bg-discord-primary hover:bg-opacity-80 text-white;
+    @apply bg-discord-primary hover:bg-discord-primary/80 text-white;
   }
   
   .btn-secondary {
@@ -47,11 +66,11 @@
   }
   
   .btn-danger {
-    @apply bg-discord-red hover:bg-opacity-80 text-white;
+    @apply bg-discord-red hover:bg-discord-red/80 text-white;
   }
   
   .btn-success {
-    @apply bg-discord-green hover:bg-opacity-80 text-white;
+    @apply bg-discord-green hover:bg-discord-green/80 text-white;
   }
   
   .card {
@@ -59,7 +78,7 @@
   }
   
   .input {
-    @apply w-full px-4 py-2 bg-discord-darker border border-discord-lightest rounded-md text-discord-text placeholder-discord-muted focus:outline-none focus:border-discord-primary transition-colors;
+    @apply w-full px-4 py-2 bg-discord-darker border border-discord-lightest rounded-md text-discord-text placeholder-discord-muted focus:outline-hidden focus:border-discord-primary transition-colors;
   }
   
   .label {
@@ -71,7 +90,7 @@
   }
   
   .sidebar-item.active {
-    @apply bg-discord-primary bg-opacity-20 text-discord-primary;
+    @apply bg-discord-primary/20 text-discord-primary;
   }
   
   .badge {
@@ -79,15 +98,15 @@
   }
   
   .badge-online {
-    @apply bg-discord-green bg-opacity-20 text-discord-green;
+    @apply bg-discord-green/20 text-discord-green;
   }
   
   .badge-offline {
-    @apply bg-discord-red bg-opacity-20 text-discord-red;
+    @apply bg-discord-red/20 text-discord-red;
   }
   
   .badge-idle {
-    @apply bg-discord-yellow bg-opacity-20 text-discord-yellow;
+    @apply bg-discord-yellow/20 text-discord-yellow;
   }
   
   .table {
@@ -103,11 +122,11 @@
   }
   
   .table tr:hover td {
-    @apply bg-discord-lightest bg-opacity-50;
+    @apply bg-discord-lightest/50;
   }
   
   .modal-overlay {
-    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50;
+    @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
   }
   
   .modal-content {
@@ -125,19 +144,19 @@
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-discord-primary to-discord-fuchsia bg-clip-text text-transparent;
+    @apply bg-linear-to-r from-discord-primary to-discord-fuchsia bg-clip-text text-transparent;
   }
   
   .animate-music {
     animation: music-bars 0.5s ease infinite alternate;
   }
   
-  @keyframes music-bars {
-    0% { transform: scaleY(0.3); }
-    100% { transform: scaleY(1); }
-  }
-  
   .glass {
-    @apply bg-discord-light bg-opacity-80 backdrop-blur-md;
+    @apply bg-discord-light/80 backdrop-blur-md;
   }
+}
+
+@keyframes music-bars {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
 }

@@ -555,7 +555,7 @@ function GuildSettings() {
               </h2>
 
               <div className="p-4 bg-discord-darker rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-discord-primary flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-discord-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-discord-text">
                   DJ Mode restricts certain commands to users with the DJ role. 
                   Great for public servers to prevent abuse.
@@ -631,7 +631,7 @@ function GuildSettings() {
               </h2>
 
               <div className="p-4 bg-discord-darker rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-discord-primary flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-discord-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-discord-text">
                   Enter channel IDs separated by commas. Enable Developer Mode in Discord to copy IDs.
                 </p>
@@ -690,7 +690,7 @@ function GuildSettings() {
               </h2>
 
               <div className="p-4 bg-discord-darker rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-discord-primary flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-discord-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-discord-text">
                   Enter IDs separated by commas. Whitelist takes priority over blacklist.
                 </p>
@@ -855,7 +855,7 @@ function GuildSettings() {
               </h2>
 
               <div className="p-4 bg-discord-darker rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-discord-primary flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-discord-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-discord-text">
                   Auto-DJ will automatically play music from a playlist when the queue is empty.
                 </p>

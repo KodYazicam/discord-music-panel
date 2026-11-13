@@ -617,7 +617,7 @@ function BotSettings() {
               </h2>
 
               <div className="p-4 bg-discord-darker rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-discord-primary flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-discord-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-discord-text">
                   DJ Mode restricts certain commands to users with the DJ role. 
                   This is useful for public servers to prevent abuse.
@@ -816,7 +816,7 @@ function BotSettings() {
               </h2>
 
               <div className="p-4 bg-discord-darker rounded-lg flex items-start gap-3">
-                <Info className="w-5 h-5 text-discord-primary flex-shrink-0 mt-0.5" />
+                <Info className="w-5 h-5 text-discord-primary shrink-0 mt-0.5" />
                 <p className="text-sm text-discord-text">
                   Enter IDs separated by commas. Enable Developer Mode in Discord settings to copy IDs.
                 </p>
@@ -916,7 +916,7 @@ function BotSettings() {
               </h2>
 
               <div className="p-4 bg-discord-yellow/10 border border-discord-yellow/30 rounded-lg flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-discord-yellow flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-discord-yellow shrink-0 mt-0.5" />
                 <p className="text-sm text-discord-text">
                   These settings are for advanced users. Incorrect configuration may affect bot performance.
                 </p>

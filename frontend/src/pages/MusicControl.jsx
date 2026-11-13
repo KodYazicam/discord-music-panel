@@ -363,7 +363,7 @@ function MusicControl() {
                     <GripVertical className="w-4 h-4 text-discord-muted cursor-grab" />
                     <span className="text-sm text-discord-muted w-5">{index + 1}</span>
                   </div>
-                  <div className="w-10 h-10 rounded bg-discord-darker flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-10 h-10 rounded bg-discord-darker flex items-center justify-center overflow-hidden shrink-0">
                     {track.thumbnail ? (
                       <img 
                         src={track.thumbnail} 

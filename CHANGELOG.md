@@ -35,6 +35,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- Upgraded the frontend to React 19, Vite 8, `@vitejs/plugin-react` 6,
+  Tailwind CSS 4 with `@tailwindcss/postcss`, and `lucide-react` 1.x. Tailwind
+  theme values now live in CSS-first `@theme` config, removed v3 utilities were
+  migrated, and brand icons removed from lucide are provided as local inline
+  SVGs.
 - Docker Compose now includes an optional `bot` profile that runs the panel plus
   one standalone bot (`docker compose --profile bot up --build`). The bot keeps
   its own `bot-data` and `bot-logs` volumes so it never shares SQLite with the
