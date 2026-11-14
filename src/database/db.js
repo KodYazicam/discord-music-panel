@@ -431,8 +431,11 @@ const playlistOperations = {
         return db.prepare('SELECT * FROM playlist_tracks WHERE playlist_id = ? ORDER BY position').all(playlistId);
     },
 
-    removeTrack: (trackId) => {
-        return db.prepare('DELETE FROM playlist_tracks WHERE id = ?').run(trackId);
+    removeTrack: (trackId, playlistId) => {
+        if (playlistId === undefined || playlistId === null) {
+            return db.prepare('DELETE FROM playlist_tracks WHERE id = ?').run(trackId);
+        }
+        return db.prepare('DELETE FROM playlist_tracks WHERE id = ? AND playlist_id = ?').run(trackId, playlistId);
     },
 
     delete: (id) => {
