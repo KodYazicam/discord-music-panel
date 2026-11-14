@@ -795,7 +795,10 @@ function setupRoutes(app) {
             if (Number(playlist.created_by) !== Number(req.user.id) && !isAdmin(req.user)) {
                 return res.status(403).json({ success: false, error: 'Forbidden' });
             }
-            playlistOperations.removeTrack(req.params.trackId);
+            const result = playlistOperations.removeTrack(req.params.trackId, req.params.id);
+            if (!result || result.changes === 0) {
+                return res.status(404).json({ success: false, error: 'Track not found' });
+            }
             res.json({ success: true, message: 'Track removed' });
         } catch (error) {
             logger.error('Error removing track:', error);
