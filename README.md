@@ -141,7 +141,7 @@ Install **ffmpeg** and **yt-dlp** on the host (`pipx install yt-dlp`). Voice enc
 |----------|-------------|---------|----------|
 | `PORT` | Backend server port | `4000` | No |
 | `NODE_ENV` | Environment mode (`development`/`production`) | `development` | No |
-| `JWT_SECRET` | Secret key for JWT authentication (min 32 chars) | - | **Yes** |
+| `JWT_SECRET` | Secret key for JWT authentication (min 32 chars). Required in production; without it development uses a random per-process secret, so tokens stop working after a restart | - | **Yes** in production |
 | `DATABASE_PATH` | SQLite database file location | `./data/database.sqlite` | No |
 | `FRONTEND_URL` | Frontend URL for CORS (used if `CORS_ORIGINS` is unset) | `http://localhost:3000` | No |
 | `CORS_ORIGINS` | Comma-separated allowed origins | `FRONTEND_URL` | No |
@@ -896,7 +896,7 @@ Content-Type: application/json
 
 ## 📡 WebSocket Events
 
-Auth is JWT in `socket.handshake.auth.token`. Bot actions are authorized the same way as REST (`created_by` or admin): every per-bot request (`bot:status`, `guilds:list`, `queue:get`, and all `music:*` events) checks ownership first and answers a non-owner with `{ success: false, error: 'Forbidden' }` (or `Bot not found`) without touching the bot. `bots:list` returns only the caller's bots; admins see every bot. `GET /api/stats/:botId` enforces the same ownership check.
+Auth is JWT in `socket.handshake.auth.token`. REST and Socket.IO resolve the signing secret from `JWT_SECRET` (one shared resolver in `src/utils/jwt-secret.js`): a configured non-placeholder value is used as-is, `NODE_ENV=production` refuses a missing or placeholder secret at startup, and development falls back to a random per-process secret. A token signed with the old public fallback constant is therefore rejected with `Invalid token` (or `401` over REST). Bot actions are authorized the same way as REST (`created_by` or admin): every per-bot request (`bot:status`, `guilds:list`, `queue:get`, and all `music:*` events) checks ownership first and answers a non-owner with `{ success: false, error: 'Forbidden' }` (or `Bot not found`) without touching the bot. `bots:list` returns only the caller's bots; admins see every bot. `GET /api/stats/:botId` enforces the same ownership check.
 
 ### Client → Server
 

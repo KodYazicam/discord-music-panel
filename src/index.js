@@ -17,20 +17,17 @@ const { setupRoutes } = require('./api/routes');
 const { setupSocketHandlers } = require('./api/socket');
 const { checkYtDlpHealth } = require('./bot/ytdlp');
 const { Logger } = require('./utils/Logger');
+const { isPlaceholderSecret, PLACEHOLDER_SECRETS } = require('./utils/jwt-secret');
 
 const logger = new Logger('Main');
 
-function isWeakSecret(value, placeholders) {
-    if (!value) return true;
-    return placeholders.some((item) => value === item || value.includes(item));
+if (process.env.NODE_ENV === 'production' && isPlaceholderSecret(process.env.JWT_SECRET)) {
+    logger.error(`Set a real JWT_SECRET before starting in production. Refused placeholders: ${PLACEHOLDER_SECRETS.join(', ')}`);
+    process.exit(1);
 }
 
-if (isWeakSecret(process.env.JWT_SECRET, ['change-this', 'your-super-secret-jwt-key-change-this-in-production', 'discord-music-panel-jwt-secret'])) {
-    if (process.env.NODE_ENV === 'production') {
-        logger.error('Set a real JWT_SECRET before starting in production.');
-        process.exit(1);
-    }
-    logger.warn('JWT_SECRET is using a default value. Set a strong secret in .env.');
+if (isPlaceholderSecret(process.env.JWT_SECRET)) {
+    logger.warn('JWT_SECRET is missing or a documented placeholder. Development uses a random per-process secret, so tokens stop working after a restart. Set a strong secret in .env.');
 }
 
 const app = express();
