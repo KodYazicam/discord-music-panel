@@ -896,7 +896,7 @@ Content-Type: application/json
 
 ## 📡 WebSocket Events
 
-Auth is JWT in `socket.handshake.auth.token`. Bot actions are authorized the same way as REST (`created_by` or admin).
+Auth is JWT in `socket.handshake.auth.token`. Bot actions are authorized the same way as REST (`created_by` or admin): every per-bot request (`bot:status`, `guilds:list`, `queue:get`, and all `music:*` events) checks ownership first and answers a non-owner with `{ success: false, error: 'Forbidden' }` (or `Bot not found`) without touching the bot. `bots:list` returns only the caller's bots; admins see every bot. `GET /api/stats/:botId` enforces the same ownership check.
 
 ### Client → Server
 
