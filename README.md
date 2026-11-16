@@ -53,6 +53,14 @@ Read [SECURITY.md](./SECURITY.md) before you publish the port.
 - **Public status**: `GET /api/status` and the read-only `/status` page expose aggregate counters, bot names, and yt-dlp availability
 - **Metrics**: optional Prometheus `GET /metrics` (`METRICS_ENABLED=true`, bearer token or panel JWT)
 
+### Localization
+
+The dashboard UI is English-only today, so `frontend/index.html` declares
+`lang="en"` and an English meta description to match the rendered strings.
+There is no i18n library, language picker, or translated string catalog yet;
+adding one means extracting the UI strings first. Until then, screen readers,
+browsers, and search engines should treat the page as English, not Turkish.
+
 ---
 
 ## 📦 Requirements
