@@ -28,7 +28,13 @@ require.cache[dbModulePath] = {
     }
 };
 
-const { getJwtSecret, isPlaceholderSecret, PLACEHOLDER_SECRETS } = require('../src/utils/jwt-secret');
+const {
+    getJwtSecret,
+    isPlaceholderSecret,
+    isWeakSecret,
+    MIN_SECRET_LENGTH,
+    PLACEHOLDER_SECRETS
+} = require('../src/utils/jwt-secret');
 const { setupRoutes } = require('../src/api/routes');
 const { setupSocketHandlers } = require('../src/api/socket');
 
@@ -155,5 +161,42 @@ test('a valid token signed with the resolved secret still authenticates', async 
 test('setupRoutes throws in production instead of signing with a placeholder', () => {
     withEnv({ JWT_SECRET: PUBLIC_FALLBACK, NODE_ENV: 'production' }, () => {
         assert.throws(() => appWithRoutes(), /JWT_SECRET/);
+    });
+});
+
+test('the documented minimum secret length is 32 characters', () => {
+    assert.equal(MIN_SECRET_LENGTH, 32);
+    assert.equal(isWeakSecret('x'.repeat(31)), true, '31 characters is too short');
+    assert.equal(isWeakSecret('x'.repeat(32)), false, '32 characters is the minimum');
+    assert.equal(isWeakSecret('   '), true, 'whitespace-only is not a secret');
+    assert.equal(isWeakSecret(undefined), false, 'an unset secret is handled by the placeholder/missing path');
+});
+
+test('production refuses a configured secret shorter than the minimum', () => {
+    withEnv({ JWT_SECRET: 'short-secret', NODE_ENV: 'production' }, () => {
+        assert.equal(isPlaceholderSecret('short-secret'), false, 'this is a length problem, not a placeholder');
+        assert.throws(() => getJwtSecret(), /at least 32 characters/);
+    });
+});
+
+test('production refuses a 31-character secret and accepts exactly 32', () => {
+    withEnv({ JWT_SECRET: 'x'.repeat(31), NODE_ENV: 'production' }, () => {
+        assert.throws(() => getJwtSecret(), /at least 32 characters/);
+    });
+    const exactlyMinimum = 'x'.repeat(32);
+    withEnv({ JWT_SECRET: exactlyMinimum, NODE_ENV: 'production' }, () => {
+        assert.equal(getJwtSecret(), exactlyMinimum);
+    });
+});
+
+test('outside production a configured short secret is still used unchanged', () => {
+    withEnv({ JWT_SECRET: 'short-secret', NODE_ENV: 'test' }, () => {
+        assert.equal(getJwtSecret(), 'short-secret');
+    });
+});
+
+test('setupRoutes throws in production when a configured secret is too short', () => {
+    withEnv({ JWT_SECRET: 'short-secret', NODE_ENV: 'production' }, () => {
+        assert.throws(() => appWithRoutes(), /at least 32 characters/);
     });
 });

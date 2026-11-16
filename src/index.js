@@ -17,12 +17,17 @@ const { setupRoutes } = require('./api/routes');
 const { setupSocketHandlers } = require('./api/socket');
 const { checkYtDlpHealth } = require('./bot/ytdlp');
 const { Logger } = require('./utils/Logger');
-const { isPlaceholderSecret, PLACEHOLDER_SECRETS } = require('./utils/jwt-secret');
+const { isPlaceholderSecret, isWeakSecret, MIN_SECRET_LENGTH, PLACEHOLDER_SECRETS } = require('./utils/jwt-secret');
 
 const logger = new Logger('Main');
 
 if (process.env.NODE_ENV === 'production' && isPlaceholderSecret(process.env.JWT_SECRET)) {
     logger.error(`Set a real JWT_SECRET before starting in production. Refused placeholders: ${PLACEHOLDER_SECRETS.join(', ')}`);
+    process.exit(1);
+}
+
+if (process.env.NODE_ENV === 'production' && isWeakSecret(process.env.JWT_SECRET)) {
+    logger.error(`JWT_SECRET is too short: use at least ${MIN_SECRET_LENGTH} characters. A short key can be brute-forced from any issued token.`);
     process.exit(1);
 }
 

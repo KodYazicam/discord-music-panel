@@ -4,7 +4,7 @@ discord-music-panel stores Discord bot tokens and panel passwords. Treat the SQL
 
 ## Before you expose the panel
 
-1. Set `JWT_SECRET` and `TOKEN_ENCRYPTION_KEY` to long random values. Production refuses missing values and every documented placeholder. Outside production, a missing `JWT_SECRET` only ever uses a random per-process secret, never a value published with the source.
+1. Set `JWT_SECRET` and `TOKEN_ENCRYPTION_KEY` to long random values. Production refuses missing values, every documented placeholder, and a configured `JWT_SECRET` shorter than 32 characters. Outside production, a missing `JWT_SECRET` only ever uses a random per-process secret, never a value published with the source.
 2. Keep registration closed after the first admin exists.
 3. Do not publish Docker on `0.0.0.0` without a reverse proxy and TLS.
 4. Panel users can only manage bots they created, unless they are `admin`.
