@@ -26,7 +26,8 @@ function createBotManager() {
         executeCommand: [],
         getBot: 0,
         getBotGuilds: 0,
-        getQueue: 0
+        getQueue: 0,
+        lifecycle: []
     };
 
     return {
@@ -53,9 +54,18 @@ function createBotManager() {
             calls.executeCommand.push({ botId, guildId, command, args });
             return { success: true };
         },
-        startBot: async () => ({ success: true }),
-        stopBot: async () => ({ success: true }),
-        restartBot: async () => ({ success: true })
+        startBot: async (botId) => {
+            calls.lifecycle.push({ action: 'start', botId });
+            return { success: true };
+        },
+        stopBot: async (botId) => {
+            calls.lifecycle.push({ action: 'stop', botId });
+            return { success: true };
+        },
+        restartBot: async (botId) => {
+            calls.lifecycle.push({ action: 'restart', botId });
+            return { success: true };
+        }
     };
 }
 
@@ -98,7 +108,9 @@ const alice = { id: 1, username: 'alice', role: 'user' };
 const bob = { id: 2, username: 'bob', role: 'user' };
 const admin = { id: 99, username: 'admin', role: 'admin' };
 
+const lifecycleEvents = ['bot:start', 'bot:stop', 'bot:restart'];
 const perBotEvents = [
+    ...lifecycleEvents.map((event) => [event, [1]]),
     ['bot:status', [1]],
     ['guilds:list', [1]],
     ['queue:get', [{ botId: 1, guildId: 'g1' }]],
@@ -130,6 +142,24 @@ test('a non-owner cannot read or control another user\'s bot', async () => {
     assert.equal(botManager.calls.getBot, 0, 'no bot metadata may be read');
     assert.equal(botManager.calls.getBotGuilds, 0, 'no guild list may be read');
     assert.equal(botManager.calls.getQueue, 0, 'no queue may be read');
+    assert.equal(botManager.calls.lifecycle.length, 0, 'no lifecycle action may reach the bot');
+});
+
+test('the owner and an admin can start, stop and restart a bot', async () => {
+    for (const user of [alice, admin]) {
+        const botManager = createBotManager();
+        const { emit } = connect(user, botManager);
+
+        for (const event of lifecycleEvents) {
+            assert.deepEqual(await emit(event, 1), { success: true }, `${event} must be allowed for ${user.username}`);
+        }
+
+        assert.deepEqual(botManager.calls.lifecycle, [
+            { action: 'start', botId: 1 },
+            { action: 'stop', botId: 1 },
+            { action: 'restart', botId: 1 }
+        ]);
+    }
 });
 
 test('a non-owner gets Bot not found for an unknown bot id', async () => {
