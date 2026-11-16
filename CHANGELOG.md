@@ -65,6 +65,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Production now refuses a configured `JWT_SECRET` shorter than 32 characters,
+  matching the minimum the README already documented.
+  `src/utils/jwt-secret.js` exports `MIN_SECRET_LENGTH`/`isWeakSecret` and
+  throws from both the shared resolver and the `src/index.js` preflight.
+  Non-production keeps using a configured short value unchanged.
 - Removed the hardcoded `discord-music-panel-jwt-secret` fallback from
   `src/api/routes.js` and `src/api/socket.js`. Both now share
   `src/utils/jwt-secret.js`: a configured non-placeholder `JWT_SECRET` is used
