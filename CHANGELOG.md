@@ -54,6 +54,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Socket.IO `bot:restart` now answers a non-owner with `{ success: false,
+  error: 'Forbidden' }` instead of the misleading `error is not defined`,
+  matching `bot:start` and `bot:stop`.
 - Production mode crashed at startup because Express 5 rejects the bare `'*'`
   route. The SPA fallback now uses `'/{*splat}'`, so `NODE_ENV=production`
   boots and serves `/status` and other client-side routes.

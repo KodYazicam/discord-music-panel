@@ -110,7 +110,7 @@ function setupSocketHandlers(io, botManager, db) {
         socket.on('bot:restart', async (botId, callback) => {
             try {
                 const access = guard(socket, botId);
-                if (access.error) return callback({ success: false, error: error.message });
+                if (access.error) return callback({ success: false, error: access.error });
                 const result = await botManager.restartBot(botId);
                 callback(result);
             } catch (error) {
