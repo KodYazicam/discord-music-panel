@@ -54,6 +54,9 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- The dashboard shell now declares `lang="en"` and an English meta description
+  instead of Turkish, matching the English UI and fixing screen-reader and
+  browser-translation heuristics.
 - Socket.IO `bot:restart` now answers a non-owner with `{ success: false,
   error: 'Forbidden' }` instead of the misleading `error is not defined`,
   matching `bot:start` and `bot:stop`.
