@@ -62,6 +62,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Removed the hardcoded `discord-music-panel-jwt-secret` fallback from
+  `src/api/routes.js` and `src/api/socket.js`. Both now share
+  `src/utils/jwt-secret.js`: a configured non-placeholder `JWT_SECRET` is used
+  unchanged, production throws when the secret is missing or a documented
+  placeholder, and development generates one random per-process secret. Tokens
+  forged with the old public constant are rejected by REST and the Socket.IO
+  handshake.
 - Added a global API rate limiter and a separate static-asset limiter.
 - Replaced the disabled Helmet CSP with explicit development and production policies.
 - Overrode `tar` to `^7.5.21` and `minimatch` to `^11.0.5` for transitive

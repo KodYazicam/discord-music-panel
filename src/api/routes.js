@@ -21,6 +21,7 @@ const { Logger } = require('../utils/Logger');
 const { userOperations, botOperations, statisticsOperations, playlistOperations, settingOperations, guildOperations } = require('../database/db');
 const { isAdmin, requireBotAccess } = require('../utils/access');
 const { normalizePresets, PresetValidationError } = require('../utils/presets');
+const { getJwtSecret } = require('../utils/jwt-secret');
 const { checkYtDlpHealth } = require('../bot/ytdlp');
 const { metricsEnabled, requestMetricsMiddleware, createMetricsAuth, renderMetrics } = require('./metrics');
 
@@ -30,6 +31,7 @@ const logger = new Logger('API');
  * Setup all API routes
  */
 function setupRoutes(app) {
+    const JWT_SECRET = getJwtSecret();
     const router = express.Router();
     const connectSrc = ["'self'", 'ws:', 'wss:'];
     if (process.env.FRONTEND_URL) connectSrc.push(process.env.FRONTEND_URL);
@@ -61,7 +63,6 @@ function setupRoutes(app) {
     app.use(helmet({ contentSecurityPolicy: { directives: cspDirectives } }));
     app.use(requestMetricsMiddleware());
 
-    const JWT_SECRET = process.env.JWT_SECRET || 'discord-music-panel-jwt-secret';
     const windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
     const maxRequests = Number(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
     const apiLimiter = rateLimit({

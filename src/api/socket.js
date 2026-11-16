@@ -5,14 +5,15 @@
 const jwt = require('jsonwebtoken');
 const { Logger } = require('../utils/Logger');
 const { isAdmin, requireBotAccess } = require('../utils/access');
+const { getJwtSecret } = require('../utils/jwt-secret');
 
 const logger = new Logger('Socket');
-const JWT_SECRET = process.env.JWT_SECRET || 'discord-music-panel-jwt-secret';
 
 /**
  * Setup Socket.io event handlers
  */
 function setupSocketHandlers(io, botManager, db) {
+    const JWT_SECRET = getJwtSecret();
     // Authentication middleware for socket connections
     io.use((socket, next) => {
         const token = socket.handshake.auth.token;
