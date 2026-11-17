@@ -79,6 +79,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- REST `authMiddleware` and the Socket.IO handshake now re-read the session user
+  through `resolveSessionUser` (`src/utils/access.js`) instead of trusting the
+  JWT claims. Deleting or demoting an account therefore takes effect
+  immediately: a deleted token gets `401 Session is no longer valid` (or
+  `Invalid token` on the socket) and a demoted admin loses admin routes, rather
+  than keeping the old role until the 24-hour token expired. An already-open
+  socket is still validated at handshake only and is cut off on reconnect.
 - Socket.IO handlers now answer through a shared `respond(callback, payload)`
   helper that skips a missing acknowledgement callback. Previously a client
   could emit `bots:list` or `stats:global` without an ack, make the listener

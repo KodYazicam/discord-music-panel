@@ -4,7 +4,7 @@
 
 const jwt = require('jsonwebtoken');
 const { Logger } = require('../utils/Logger');
-const { isAdmin, requireBotAccess } = require('../utils/access');
+const { isAdmin, requireBotAccess, resolveSessionUser } = require('../utils/access');
 const { getJwtSecret } = require('../utils/jwt-secret');
 
 const logger = new Logger('Socket');
@@ -24,7 +24,11 @@ function setupSocketHandlers(io, botManager, db) {
 
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
-            socket.user = decoded;
+            const user = resolveSessionUser(decoded);
+            if (!user) {
+                return next(new Error('Invalid token'));
+            }
+            socket.user = user;
             next();
         } catch (error) {
             return next(new Error('Invalid token'));
