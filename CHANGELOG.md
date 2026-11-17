@@ -68,6 +68,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Socket.IO handlers now answer through a shared `respond(callback, payload)`
+  helper that skips a missing acknowledgement callback. Previously a client
+  could emit `bots:list` or `stats:global` without an ack, make the listener
+  throw a second `TypeError` outside its `try`, and terminate the panel through
+  the `uncaughtException` handler. Async handlers produced an unhandled
+  rejection on the same path. Authorization is unchanged.
 - Production now refuses a configured `JWT_SECRET` shorter than 32 characters,
   matching the minimum the README already documented.
   `src/utils/jwt-secret.js` exports `MIN_SECRET_LENGTH`/`isWeakSecret` and

@@ -37,14 +37,22 @@ function setupSocketHandlers(io, botManager, db) {
     };
 
     /**
+     * Reply only when the client supplied an acknowledgement callback.
+     * Socket.IO passes no callback for `socket.emit(event, payload)`, so an
+     * unconditional call throws from the listener and can take the process
+     * down through the uncaughtException handler.
+     */
+    const respond = (callback, payload) => {
+        if (typeof callback === 'function') {
+            callback(payload);
+        }
+    };
+
+    /**
      * Reply to a per-bot request without leaking bot data when the caller
      * is not allowed to manage the bot.
      */
-    const denyAccess = (callback, access) => {
-        if (typeof callback === 'function') {
-            callback({ success: false, error: access.error });
-        }
-    };
+    const denyAccess = (callback, access) => respond(callback, { success: false, error: access.error });
 
     io.on('connection', (socket) => {
         logger.info(`Client connected: ${socket.user.username} (${socket.id})`);
@@ -82,11 +90,11 @@ function setupSocketHandlers(io, botManager, db) {
         socket.on('bot:start', async (botId, callback) => {
             try {
                 const access = guard(socket, botId);
-                if (access.error) return callback({ success: false, error: access.error });
+                if (access.error) return respond(callback, { success: false, error: access.error });
                 const result = await botManager.startBot(botId);
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -96,11 +104,11 @@ function setupSocketHandlers(io, botManager, db) {
         socket.on('bot:stop', async (botId, callback) => {
             try {
                 const access = guard(socket, botId);
-                if (access.error) return callback({ success: false, error: access.error });
+                if (access.error) return respond(callback, { success: false, error: access.error });
                 const result = await botManager.stopBot(botId);
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -110,11 +118,11 @@ function setupSocketHandlers(io, botManager, db) {
         socket.on('bot:restart', async (botId, callback) => {
             try {
                 const access = guard(socket, botId);
-                if (access.error) return callback({ success: false, error: access.error });
+                if (access.error) return respond(callback, { success: false, error: access.error });
                 const result = await botManager.restartBot(botId);
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -126,9 +134,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const bot = botManager.getBot(botId);
-                callback({ success: true, bot });
+                respond(callback, { success: true, bot });
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -142,9 +150,9 @@ function setupSocketHandlers(io, botManager, db) {
                     bots = bots.filter((bot) => Number(bot.createdBy) === Number(socket.user.id)
                         || Number(bot.created_by) === Number(socket.user.id));
                 }
-                callback({ success: true, bots });
+                respond(callback, { success: true, bots });
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -182,9 +190,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const guilds = botManager.getBotGuilds(botId);
-                callback({ success: true, guilds });
+                respond(callback, { success: true, guilds });
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -198,9 +206,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const queue = botManager.getQueue(botId, guildId);
-                callback({ success: true, queue });
+                respond(callback, { success: true, queue });
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -212,15 +220,15 @@ function setupSocketHandlers(io, botManager, db) {
         socket.on('music:play', async ({ botId, guildId, query, voiceChannelId, textChannelId }, callback) => {
             try {
                 const access = guard(socket, botId);
-                if (access.error) return callback({ success: false, error: access.error });
+                if (access.error) return respond(callback, { success: false, error: access.error });
                 const result = await botManager.executeCommand(botId, guildId, 'play', {
                     query,
                     voiceChannelId,
                     textChannelId
                 });
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -232,9 +240,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'pause');
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -246,9 +254,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'resume');
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -260,9 +268,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'skip');
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -274,9 +282,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'stop');
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -288,9 +296,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'volume', { volume });
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -302,9 +310,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'shuffle');
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -316,9 +324,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'loop', { mode });
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -330,9 +338,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'remove', { index });
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -344,9 +352,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'clear');
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -358,9 +366,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'move', { from, to });
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -372,9 +380,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'jump', { index });
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -386,9 +394,9 @@ function setupSocketHandlers(io, botManager, db) {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
                 const result = await botManager.executeCommand(botId, guildId, 'leave');
-                callback(result);
+                respond(callback, result);
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
@@ -400,9 +408,9 @@ function setupSocketHandlers(io, botManager, db) {
         socket.on('stats:global', (callback) => {
             try {
                 const stats = botManager.getGlobalStats();
-                callback({ success: true, stats });
+                respond(callback, { success: true, stats });
             } catch (error) {
-                callback({ success: false, error: error.message });
+                respond(callback, { success: false, error: error.message });
             }
         });
 
