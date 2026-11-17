@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
-import { Music2, Github, Instagram, Heart } from 'lucide-react'
+import { Music2, Heart } from 'lucide-react'
+import { GithubIcon, InstagramIcon } from '../components/BrandIcons'
 
 function AuthLayout() {
   return (
@@ -45,7 +46,7 @@ function AuthLayout() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
                 >
-                  <Github className="w-4 h-4" />
+                  <GithubIcon className="w-4 h-4" />
                   <span className="text-sm">GitHub</span>
                 </a>
                 <a
@@ -54,7 +55,7 @@ function AuthLayout() {
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
                 >
-                  <Instagram className="w-4 h-4" />
+                  <InstagramIcon className="w-4 h-4" />
                   <span className="text-sm">@kodyazicam</span>
                 </a>
               </div>
@@ -102,7 +103,7 @@ function AuthLayout() {
             rel="noopener noreferrer"
             className="flex items-center gap-1 hover:text-white transition-colors"
           >
-            <Github className="w-4 h-4" />
+            <GithubIcon className="w-4 h-4" />
             <span>GitHub</span>
           </a>
           <a
@@ -111,7 +112,7 @@ function AuthLayout() {
             rel="noopener noreferrer"
             className="flex items-center gap-1 hover:text-white transition-colors"
           >
-            <Instagram className="w-4 h-4" />
+            <InstagramIcon className="w-4 h-4" />
             <span>@kodyazicam</span>
           </a>
         </div>

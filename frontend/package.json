@@ -13,7 +13,8 @@
     "dev": "vite",
     "build": "vite build",
     "test": "node --test tests/*.test.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "icons:check": "node scripts/check-icon-imports.mjs"
   },
   "dependencies": {
     "axios": "^1.6.2",

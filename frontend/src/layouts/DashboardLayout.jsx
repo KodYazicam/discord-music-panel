@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { initSocket, disconnectSocket } from '../utils/socket'
+import { GithubIcon, InstagramIcon } from '../components/BrandIcons'
 import {
   Music2,
   LayoutDashboard,
@@ -15,8 +16,6 @@ import {
   X,
   ChevronDown,
   User,
-  Github,
-  Instagram,
   Heart
 } from 'lucide-react'
 
@@ -203,7 +202,7 @@ function DashboardLayout() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 hover:text-white transition-colors"
               >
-                <Github className="w-4 h-4" />
+                <GithubIcon className="w-4 h-4" />
                 <span>GitHub</span>
               </a>
               <a
@@ -212,7 +211,7 @@ function DashboardLayout() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 hover:text-white transition-colors"
               >
-                <Instagram className="w-4 h-4" />
+                <InstagramIcon className="w-4 h-4" />
                 <span>@kodyazicam</span>
               </a>
             </div>
