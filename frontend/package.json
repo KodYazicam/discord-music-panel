@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "icons:check": "node scripts/check-icon-imports.mjs"
   },
   "dependencies": {
     "axios": "^1.6.2",

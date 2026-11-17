@@ -65,6 +65,12 @@ All notable changes to this project are documented here. The format follows
   boots and serves `/status` and other client-side routes.
 - Imported `EmbedBuilder` in `src/bot/MusicQueue.js`; the now-playing and queue
   embeds previously threw a `ReferenceError` when song announcements were enabled.
+- The dashboard footer and auth sidebar no longer import the `Github` and
+  `Instagram` icons from `lucide-react`, which removed them in 1.x and broke the
+  frontend build on every dependency bump. Both marks are now local components
+  in `frontend/src/components/BrandIcons.jsx` with the same geometry, and
+  `npm run icons:check` in the frontend CI job reports any icon name that the
+  installed `lucide-react` does not export.
 
 ### Security
 
