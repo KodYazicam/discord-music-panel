@@ -24,13 +24,13 @@ npm test
 GitHub Actions runs two jobs on every pull request and on pushes to `main`:
 
 - `test`: `npm ci --ignore-scripts` and `npm test` for the backend.
-- `frontend`: `npm ci` and `npm run build` in `frontend/`, cached with `frontend/package-lock.json`.
+- `frontend`: `npm ci`, `npm test`, and `npm run build` in `frontend/`, cached with `frontend/package-lock.json`.
 
 Run the same checks locally before opening a pull request:
 
 ```bash
 npm ci --ignore-scripts && npm test
-cd frontend && npm ci && npm run build
+cd frontend && npm ci && npm test && npm run build
 ```
 
 Keep both `package-lock.json` files committed. Dependabot updates the root and
