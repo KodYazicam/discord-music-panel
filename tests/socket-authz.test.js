@@ -101,7 +101,15 @@ function connect(user, botManager) {
         handler(...args, resolve);
     });
 
-    return { emit };
+    // Invoke the registered handler exactly as Socket.IO does when the client
+    // omits the acknowledgement callback.
+    const raw = async (event, ...args) => {
+        const handler = handlers.get(event);
+        assert.equal(typeof handler, 'function', `missing handler for ${event}`);
+        return handler(...args);
+    };
+
+    return { emit, raw };
 }
 
 const alice = { id: 1, username: 'alice', role: 'user' };
@@ -203,4 +211,33 @@ test('bots:list returns only the caller\'s bots unless the caller is an admin', 
     const adminSocket = connect(admin, createBotManager());
     const adminList = await adminSocket.emit('bots:list');
     assert.deepEqual(adminList.bots.map((bot) => bot.name), ['alice-bot', 'bob-bot']);
+});
+
+test('callback-taking handlers tolerate a client that omits the acknowledgement callback', async () => {
+    const events = [
+        ...perBotEvents,
+        ['bots:list', []],
+        ['stats:global', []]
+    ];
+
+    for (const user of [bob, alice]) {
+        const botManager = createBotManager();
+        const { raw } = connect(user, botManager);
+
+        for (const [event, args] of events) {
+            await assert.doesNotReject(
+                async () => raw(event, ...args),
+                `${event} must not throw or reject for ${user.username} without an ack`
+            );
+        }
+
+        if (user === bob) {
+            assert.equal(botManager.calls.executeCommand.length, 0, 'no command may reach the bot');
+            assert.equal(botManager.calls.lifecycle.length, 0, 'no lifecycle action may reach the bot');
+            assert.equal(botManager.calls.getBotGuilds, 0, 'no guild list may be read');
+            assert.equal(botManager.calls.getQueue, 0, 'no queue may be read');
+        } else {
+            assert.equal(botManager.calls.lifecycle.length, 3, 'the owner lifecycle actions still run');
+        }
+    }
 });
