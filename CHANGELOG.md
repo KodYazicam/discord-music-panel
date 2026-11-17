@@ -7,6 +7,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Added the first frontend test suite (`frontend/tests/`, built-in `node:test`,
+  no new dependencies) and run it in the `frontend` CI job. A regression test
+  pins the shared Axios interceptor: a 401 from `/auth/login` no longer clears
+  the session or reloads the page, while protected-endpoint 401s still log out
+  and redirect once.
 - Added queue and player lifecycle test coverage under `tests/` using
   `node:test` with mocked Socket.IO, audio player, voice connection, `yt-dlp`,
   and database modules. Queue mutations, max size, loop modes, pause/resume,

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { useAuthStore } from '../stores/authStore'
+import { useAuthStore } from '../stores/authStore.js'
 
 const api = axios.create({
   baseURL: '/api',
@@ -23,14 +23,27 @@ api.interceptors.request.use(
   }
 )
 
+// Authentication endpoints answer 401 for bad input (wrong password, duplicate
+// account), so they must not be treated as an expired session.
+const AUTH_ENTRY_POINTS = ['/auth/login', '/auth/register']
+
+function isAuthEntryPoint(url = '') {
+  const path = url.split('?')[0].split('#')[0].replace(/\/+$/, '')
+  return AUTH_ENTRY_POINTS.some(
+    (endpoint) => path === endpoint || path.endsWith(`/api${endpoint}`)
+  )
+}
+
 // Response interceptor - handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
+    // Handle 401 Unauthorized on protected endpoints
+    if (error.response?.status === 401 && !isAuthEntryPoint(error.config?.url)) {
       useAuthStore.getState().logout()
-      window.location.href = '/login'
+      if (typeof window !== 'undefined' && window.location?.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     }
     
     // Handle network errors

@@ -32,6 +32,7 @@ test('CI builds the frontend with its own lockfile cache key', () => {
     assert.match(frontend, /working-directory: frontend/);
     assert.match(frontend, /cache-dependency-path: frontend\/package-lock\.json/);
     assert.match(frontend, /- run: npm ci\b/);
+    assert.match(frontend, /- run: npm test\b/);
     assert.match(frontend, /- run: npm run build\b/);
 });
 

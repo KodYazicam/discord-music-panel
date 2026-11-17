@@ -1163,6 +1163,20 @@ voice connection, `yt-dlp` resource creation, and the database module, so they
 run with `npm ci --ignore-scripts` (the CI configuration) even when the
 `better-sqlite3` native binding has not been compiled.
 
+The dashboard has its own suite next to the Vite app. It uses the built-in
+`node:test` runner as well, needs no browser or network, and runs in the
+`frontend` CI job:
+
+```bash
+cd frontend
+npm test
+```
+
+`frontend/tests/api-unauthorized.test.js` pins the shared Axios interceptor: a
+401 from `/auth/login` (wrong password) must not clear the session or navigate,
+while a 401 from a protected endpoint still logs the user out and redirects to
+`/login`.
+
 ---
 
 ## 🔧 Troubleshooting
