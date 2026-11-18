@@ -35,7 +35,45 @@ function setupSocketHandlers(io, botManager, db) {
         }
     });
 
+    const SESSION_INVALID = 'Session is no longer valid';
+
+    /**
+     * Re-read the account behind an authenticated socket.
+     *
+     * The handshake proves the token was valid once; it does not prove the
+     * account still exists or keeps the role stored in the socket snapshot.
+     * Every user-driven event re-reads the row so an open dashboard tab cannot
+     * outlive a deleted or demoted account.
+     */
+    const refreshSocketUser = (socket) => {
+        const user = resolveSessionUser({ id: socket.user?.id });
+        if (!user) return null;
+        socket.user = user;
+        return user;
+    };
+
+    /**
+     * Close a socket whose account no longer exists. The disconnect is
+     * deferred so the error acknowledgement for the current event can flush
+     * before the transport closes.
+     */
+    const endSession = (socket) => {
+        if (socket.sessionEnded) return;
+        socket.sessionEnded = true;
+        setImmediate(() => {
+            try {
+                socket.disconnect(true);
+            } catch (error) {
+                logger.debug(`Socket already closed: ${error.message}`);
+            }
+        });
+    };
+
     const guard = (socket, botId) => {
+        if (!refreshSocketUser(socket)) {
+            endSession(socket);
+            return { error: SESSION_INVALID, status: 401 };
+        }
         const fakeReq = { user: socket.user };
         return requireBotAccess(fakeReq, botId);
     };
@@ -149,6 +187,10 @@ function setupSocketHandlers(io, botManager, db) {
          */
         socket.on('bots:list', (callback) => {
             try {
+                if (!refreshSocketUser(socket)) {
+                    endSession(socket);
+                    return respond(callback, { success: false, error: SESSION_INVALID });
+                }
                 let bots = botManager.getAllBots();
                 if (!isAdmin(socket.user)) {
                     bots = bots.filter((bot) => Number(bot.createdBy) === Number(socket.user.id)
