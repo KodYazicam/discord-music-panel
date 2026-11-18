@@ -59,6 +59,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- The music dashboard pages no longer crash and every control now posts to
+  `/api/bots/:id/guilds/:guildId/command` instead of the non-existent
+  `/api/music/*` tree; queue payloads are normalised across REST and Socket.IO.
+- `MusicBot.play()` accepts a missing `voiceChannelId` for an already-connected
+  guild; a cold start still returns `Voice channel not found`.
+
 - The dashboard shell now declares `lang="en"` and an English meta description
   instead of Turkish, matching the English UI and fixing screen-reader and
   browser-translation heuristics.

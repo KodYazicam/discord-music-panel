@@ -653,27 +653,26 @@ Music playback state.
 **State:**
 ```javascript
 {
-  queue: [],            // Current queue
-  currentTrack: null,   // Now playing
-  isPlaying: false,
-  volume: 100,
-  loopMode: 'off'
+  queues: {},          // Per-guild queue keyed by `${botId}-${guildId}`
+  isLoading: false,
+  error: null
 }
 ```
+
+`selectQueue(state, botId, guildId)` returns the normalised per-guild queue
+(`tracks`, `currentTrack`, `loopMode`, `position`) or an empty queue before the first fetch.
 
 **Actions:**
 | Action | Description |
 |--------|-------------|
-| `play(query)` | Play track |
-| `pause()` | Pause playback |
-| `resume()` | Resume playback |
-| `skip()` | Skip track |
-| `stop()` | Stop playback |
-| `setVolume(level)` | Set volume |
-| `shuffle()` | Shuffle queue |
-| `setLoop(mode)` | Set loop mode |
-| `removeTrack(index)` | Remove from queue |
-| `clearQueue()` | Clear queue |
+| `fetchQueue(botId, guildId)` | Load the guild queue from `GET /api/bots/:id/guilds/:guildId/queue` |
+| `play(botId, guildId, query)` / `addToQueue(...)` | Queue a search or URL through the `play` command |
+| `pause(botId, guildId)` / `resume(...)` / `skip(...)` / `stop(...)` | Playback controls |
+| `setVolume(botId, guildId, level)` | Set volume |
+| `shuffle(...)` / `shuffleQueue(...)` | Shuffle queue |
+| `setLoop(botId, guildId, mode)` / `toggleLoop(...)` | Set or cycle `off` / `track` / `queue` |
+| `removeTrack(botId, guildId, index)` / `removeFromQueue(...)` | Remove from queue |
+| `clearQueue(...)` / `moveTrack(...)` / `seek(...)` | Clear, reorder, or seek |
 
 ---
 
@@ -872,6 +871,8 @@ All fields are optional; only the allowlisted keys above are accepted. `volume` 
 ### Music
 
 There is no `/api/music/...` tree. Playback goes through the bot command endpoint.
+
+`voiceChannelId` is required for a cold start; omit it when the bot is already connected.
 
 **Play Track:**
 ```http

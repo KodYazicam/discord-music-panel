@@ -364,6 +364,26 @@ test('play reports a missing guild and a missing voice channel', async (t) => {
     attachGuild();
 
     assert.equal((await bot.play(guildId, 'query', 'missing-voice')).message, 'Voice channel not found');
+    assert.equal((await bot.play(guildId, 'query')).message, 'Voice channel not found');
+});
+
+test('play queues into an active connection without a voice channel id', async (t) => {
+    const { bot, guildId, attachQueue, attachPlayer, attachConnection, attachGuild } = createHarness(t);
+    attachGuild();
+    const queue = attachQueue([]);
+    attachPlayer();
+    attachConnection();
+
+    const track = makeTrack(1);
+    queue.search = async () => [track];
+    queue.createResource = async () => createResource();
+
+    const result = await bot.play(guildId, 'panel query');
+
+    assert.equal(result.success, true);
+    assert.deepEqual(queue.tracks, [track]);
+    assert.equal(queue.currentTrack, track);
+    assert.equal((await bot.play(guildId, 'panel query', 'missing-voice')).message, 'Voice channel not found');
 });
 
 test('play returns a failure result when the search throws', async (t) => {

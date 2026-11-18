@@ -543,8 +543,15 @@ class MusicBot {
         const guild = this.client.guilds.cache.get(guildId);
         if (!guild) return { success: false, message: 'Guild not found' };
 
-        const voiceChannel = guild.channels.cache.get(voiceChannelId);
-        if (!voiceChannel) return { success: false, message: 'Voice channel not found' };
+        let voiceChannel = null;
+        if (voiceChannelId) {
+            voiceChannel = guild.channels.cache.get(voiceChannelId);
+            if (!voiceChannel) return { success: false, message: 'Voice channel not found' };
+        } else if (!this.connections.has(guildId)) {
+            // Queueing into an active session does not need a channel id; a
+            // cold start still needs one so the bot knows where to join.
+            return { success: false, message: 'Voice channel not found' };
+        }
 
         const textChannel = textChannelId ? guild.channels.cache.get(textChannelId) : null;
 
@@ -571,7 +578,7 @@ class MusicBot {
 
             // Join voice channel if not already connected
             if (!this.connections.has(guildId)) {
-                await this.joinVoice(guildId, voiceChannelId);
+                await this.joinVoice(guildId, voiceChannel.id);
             }
 
             // Start playing if not already
