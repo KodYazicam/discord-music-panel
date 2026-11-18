@@ -98,8 +98,13 @@ All notable changes to this project are documented here. The format follows
   JWT claims. Deleting or demoting an account therefore takes effect
   immediately: a deleted token gets `401 Session is no longer valid` (or
   `Invalid token` on the socket) and a demoted admin loses admin routes, rather
-  than keeping the old role until the 24-hour token expired. An already-open
-  socket is still validated at handshake only and is cut off on reconnect.
+  than keeping the old role until the 24-hour token expired.
+- An already-open Socket.IO connection now revalidates its session per event.
+  `refreshSocketUser` (`src/api/socket.js`) re-reads the `users` row inside
+  `guard()` and `bots:list`, so a demoted admin immediately loses admin-scoped
+  bot visibility and control, and a deleted account receives
+  `{ success: false, error: 'Session is no longer valid' }` and is disconnected
+  instead of keeping the handshake snapshot until the tab reconnects.
 - Socket.IO handlers now answer through a shared `respond(callback, payload)`
   helper that skips a missing acknowledgement callback. Previously a client
   could emit `bots:list` or `stats:global` without an ack, make the listener
