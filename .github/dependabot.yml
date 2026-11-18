@@ -22,7 +22,8 @@ updates:
     open-pull-requests-limit: 5
     ignore:
       # These majors need a coordinated migration, not a grouped bump.
-      # Remove each entry when its tracking issue is closed (#65, #66).
+      # Tailwind 4 is tracked in #47; React 19/zustand 5/lucide 1.x and the
+      # Vite 8 toolchain in #30. Remove each entry when those land.
       - dependency-name: react
         update-types: ["version-update:semver-major"]
       - dependency-name: react-dom
