@@ -19,7 +19,7 @@ try {
 }
 const { Logger } = require('../utils/Logger');
 const { userOperations, botOperations, statisticsOperations, playlistOperations, settingOperations, guildOperations } = require('../database/db');
-const { isAdmin, requireBotAccess } = require('../utils/access');
+const { isAdmin, requireBotAccess, resolveSessionUser } = require('../utils/access');
 const { normalizePresets, PresetValidationError } = require('../utils/presets');
 const { getJwtSecret } = require('../utils/jwt-secret');
 const { checkYtDlpHealth } = require('../bot/ytdlp');
@@ -98,7 +98,11 @@ function setupRoutes(app) {
 
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
-            req.user = decoded;
+            const user = resolveSessionUser(decoded);
+            if (!user) {
+                return res.status(401).json({ success: false, error: 'Session is no longer valid' });
+            }
+            req.user = user;
             next();
         } catch (error) {
             return res.status(401).json({ success: false, error: 'Invalid token' });

@@ -16,7 +16,13 @@ require.cache[dbModulePath] = {
     filename: dbModulePath,
     loaded: true,
     exports: {
-        userOperations: {},
+        userOperations: {
+            getById: (id) => {
+                if (Number(id) === 1) return { id: 1, username: 'owner', role: 'admin' };
+                if (Number(id) === 3) return { id: 3, username: 'other', role: 'user' };
+                return null;
+            }
+        },
         botOperations: {
             getById: (id) => {
                 if (id === 'bot-1') return { id, name: 'Bot One', created_by: 1 };

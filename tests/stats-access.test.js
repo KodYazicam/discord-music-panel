@@ -11,13 +11,21 @@ const bots = new Map([
     [1, { id: 1, name: 'alice-bot', created_by: 1 }]
 ]);
 
+const seededUsers = new Map([
+    [1, { id: 1, username: 'alice', role: 'user' }],
+    [2, { id: 2, username: 'bob', role: 'user' }],
+    [99, { id: 99, username: 'admin', role: 'admin' }]
+]);
+
 const dbModulePath = require.resolve('../src/database/db');
 require.cache[dbModulePath] = {
     id: dbModulePath,
     filename: dbModulePath,
     loaded: true,
     exports: {
-        userOperations: {},
+        userOperations: {
+            getById: (id) => seededUsers.get(Number(id)) || null
+        },
         botOperations: {
             getById: (id) => bots.get(Number(id)) || null,
             getAll: () => [...bots.values()]
