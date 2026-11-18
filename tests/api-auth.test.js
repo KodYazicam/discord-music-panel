@@ -235,7 +235,7 @@ test('/api/auth/me rejects missing and invalid tokens', async (t) => {
     assert.equal((await invalid.json()).error, 'Invalid token');
 });
 
-test('/api/auth/me returns the current user and 404s for deleted users', async (t) => {
+test('/api/auth/me returns the current user and rejects a deleted session', async (t) => {
     resetState();
     const id = seedUser({ username: 'alice' });
     const base = await startServer(t);
@@ -249,8 +249,8 @@ test('/api/auth/me returns the current user and 404s for deleted users', async (
 
     users.delete(id);
     const deleted = await request(base, '/api/auth/me', { token });
-    assert.equal(deleted.status, 404);
-    assert.equal((await deleted.json()).error, 'User not found');
+    assert.equal(deleted.status, 401);
+    assert.equal((await deleted.json()).error, 'Session is no longer valid');
 });
 
 test('/api/users requires an admin token', async (t) => {
@@ -263,6 +263,7 @@ test('/api/users requires an admin token', async (t) => {
     assert.equal(forbidden.status, 403);
     assert.equal((await forbidden.json()).error, 'Admin only');
 
+    users.get(userId).role = 'admin';
     const adminToken = jwt.sign({ id: userId, username: 'alice', role: 'admin' }, process.env.JWT_SECRET);
     const allowed = await request(base, '/api/users', { token: adminToken });
     assert.equal(allowed.status, 200);
@@ -271,6 +272,44 @@ test('/api/users requires an admin token', async (t) => {
     assert.equal(body.users[0].username, 'alice');
     assert.equal(body.users[0].password, undefined);
     assert.equal(body.registrationOpen, false);
+});
+
+test('a demoted admin token loses admin access immediately', async (t) => {
+    resetState();
+    const id = seedUser({ username: 'alice', role: 'admin' });
+    const base = await startServer(t);
+    const token = jwt.sign({ id, username: 'alice', role: 'admin' }, process.env.JWT_SECRET);
+
+    const before = await request(base, '/api/users', { token });
+    assert.equal(before.status, 200);
+
+    users.get(id).role = 'user';
+
+    const after = await request(base, '/api/users', { token });
+    assert.equal(after.status, 403);
+    assert.equal((await after.json()).error, 'Admin only');
+
+    const me = await request(base, '/api/auth/me', { token });
+    assert.equal(me.status, 200);
+    assert.equal((await me.json()).user.role, 'user');
+});
+
+test('a deleted admin token can no longer change panel settings', async (t) => {
+    resetState();
+    const id = seedUser({ username: 'gone', role: 'admin' });
+    const base = await startServer(t);
+    const token = jwt.sign({ id, username: 'gone', role: 'admin' }, process.env.JWT_SECRET);
+
+    users.delete(id);
+
+    const response = await request(base, '/api/settings/registration', {
+        token,
+        method: 'POST',
+        body: { open: true }
+    });
+    assert.equal(response.status, 401);
+    assert.equal((await response.json()).error, 'Session is no longer valid');
+    assert.equal(settings.get('registration_open'), undefined);
 });
 
 test('global API limiter returns 429 with a JSON error after the limit', async (t) => {

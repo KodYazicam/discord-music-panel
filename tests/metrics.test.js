@@ -14,7 +14,8 @@ require.cache[dbModulePath] = {
     exports: {
         userOperations: {
             count: () => 0,
-            getByUsername: () => null
+            getByUsername: () => null,
+            getById: (id) => (Number(id) === 1 ? { id: 1, username: 'admin', role: 'admin' } : null)
         },
         botOperations: {
             getById: () => null,
