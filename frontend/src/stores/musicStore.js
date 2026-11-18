@@ -1,8 +1,43 @@
 import { create } from 'zustand'
-import api from '../utils/api'
+import api from '../utils/api.js'
+
+export const EMPTY_QUEUE = Object.freeze({
+  tracks: [],
+  currentTrack: null,
+  isPlaying: false,
+  volume: 100,
+  loop: false,
+  loopQueue: false,
+  loopMode: 'off',
+  position: 0
+})
+
+const queueKey = (botId, guildId) => `${botId}-${guildId}`
+const guildPath = (botId, guildId) => `/bots/${botId}/guilds/${guildId}`
+
+// REST returns tracks/currentTrack/loop/loopQueue, while socket payloads may
+// use current/loopMode. Normalise both into one shape for every consumer.
+export const normalizeQueue = (queue) => ({
+  ...EMPTY_QUEUE,
+  ...(queue || {}),
+  tracks: Array.isArray(queue?.tracks) ? queue.tracks : [],
+  currentTrack: queue?.currentTrack ?? queue?.current ?? null,
+  loopMode: queue?.loopQueue ? 'queue' : queue?.loop ? 'track' : (queue?.loopMode || 'off')
+})
+
+export const selectQueue = (state, botId, guildId) =>
+  state.queues[queueKey(botId, guildId)] || EMPTY_QUEUE
+
+async function runCommand(botId, guildId, command, args = {}) {
+  const response = await api.post(`${guildPath(botId, guildId)}/command`, { command, args })
+  if (response.data?.success === false) {
+    return { success: false, error: response.data.message || 'Command failed' }
+  }
+  return { success: true, data: response.data }
+}
 
 export const useMusicStore = create((set, get) => ({
-  queues: {}, // { `${botId}-${guildId}`: queueData }
+  queues: {}, // { `${botId}-${guildId}`: normalised queue }
   currentTrack: null,
   isPlaying: false,
   volume: 100,
@@ -11,25 +46,23 @@ export const useMusicStore = create((set, get) => ({
   error: null,
 
   // Get queue for specific bot and guild
-  getQueue: (botId, guildId) => {
-    const key = `${botId}-${guildId}`
-    return get().queues[key] || { tracks: [], current: null, isPlaying: false, volume: 100, loopMode: 'off' }
-  },
+  getQueue: (botId, guildId) => selectQueue(get(), botId, guildId),
 
   // Fetch queue from server
   fetchQueue: async (botId, guildId) => {
     set({ isLoading: true, error: null })
     try {
-      const response = await api.get(`/music/${botId}/${guildId}/queue`)
-      const key = `${botId}-${guildId}`
+      const response = await api.get(`${guildPath(botId, guildId)}/queue`)
+      const key = queueKey(botId, guildId)
+      const queue = normalizeQueue(response.data.queue)
       set((state) => ({
         queues: {
           ...state.queues,
-          [key]: response.data.queue
+          [key]: queue
         },
         isLoading: false
       }))
-      return { success: true, queue: response.data.queue }
+      return { success: true, queue }
     } catch (error) {
       set({
         error: error.response?.data?.error || 'Failed to get queue info',
@@ -42,8 +75,8 @@ export const useMusicStore = create((set, get) => ({
   // Play a track
   play: async (botId, guildId, query) => {
     try {
-      const response = await api.post(`/music/${botId}/${guildId}/play`, { query })
-      return { success: true, track: response.data.track }
+      const result = await runCommand(botId, guildId, 'play', { query })
+      return result.success ? { ...result, track: result.data?.tracks?.[0] } : result
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -52,8 +85,7 @@ export const useMusicStore = create((set, get) => ({
   // Pause playback
   pause: async (botId, guildId) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/pause`)
-      return { success: true }
+      return await runCommand(botId, guildId, 'pause')
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -62,8 +94,7 @@ export const useMusicStore = create((set, get) => ({
   // Resume playback
   resume: async (botId, guildId) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/resume`)
-      return { success: true }
+      return await runCommand(botId, guildId, 'resume')
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -72,8 +103,7 @@ export const useMusicStore = create((set, get) => ({
   // Skip current track
   skip: async (botId, guildId) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/skip`)
-      return { success: true }
+      return await runCommand(botId, guildId, 'skip')
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -82,8 +112,7 @@ export const useMusicStore = create((set, get) => ({
   // Stop playback
   stop: async (botId, guildId) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/stop`)
-      return { success: true }
+      return await runCommand(botId, guildId, 'stop')
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -92,8 +121,7 @@ export const useMusicStore = create((set, get) => ({
   // Set volume
   setVolume: async (botId, guildId, volume) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/volume`, { volume })
-      return { success: true }
+      return await runCommand(botId, guildId, 'volume', { volume })
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -102,8 +130,7 @@ export const useMusicStore = create((set, get) => ({
   // Shuffle queue
   shuffle: async (botId, guildId) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/shuffle`)
-      return { success: true }
+      return await runCommand(botId, guildId, 'shuffle')
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -112,8 +139,21 @@ export const useMusicStore = create((set, get) => ({
   // Set loop mode
   setLoop: async (botId, guildId, mode) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/loop`, { mode })
-      return { success: true }
+      const result = await runCommand(botId, guildId, 'loop', { mode })
+      if (result.success) {
+        set((state) => ({
+          queues: {
+            ...state.queues,
+            [queueKey(botId, guildId)]: {
+              ...selectQueue(state, botId, guildId),
+              loopMode: mode,
+              loop: mode === 'track',
+              loopQueue: mode === 'queue'
+            }
+          }
+        }))
+      }
+      return result
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -122,8 +162,7 @@ export const useMusicStore = create((set, get) => ({
   // Remove track from queue
   removeTrack: async (botId, guildId, index) => {
     try {
-      await api.delete(`/music/${botId}/${guildId}/queue/${index}`)
-      return { success: true }
+      return await runCommand(botId, guildId, 'remove', { index })
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -132,8 +171,7 @@ export const useMusicStore = create((set, get) => ({
   // Clear queue
   clearQueue: async (botId, guildId) => {
     try {
-      await api.delete(`/music/${botId}/${guildId}/queue`)
-      return { success: true }
+      return await runCommand(botId, guildId, 'clear')
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -142,8 +180,7 @@ export const useMusicStore = create((set, get) => ({
   // Move track in queue
   moveTrack: async (botId, guildId, from, to) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/move`, { from, to })
-      return { success: true }
+      return await runCommand(botId, guildId, 'move', { from, to })
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
@@ -152,11 +189,20 @@ export const useMusicStore = create((set, get) => ({
   // Seek to position
   seek: async (botId, guildId, position) => {
     try {
-      await api.post(`/music/${botId}/${guildId}/seek`, { position })
-      return { success: true }
+      return await runCommand(botId, guildId, 'seek', { position })
     } catch (error) {
       return { success: false, error: error.response?.data?.error }
     }
+  },
+
+  // Aliases used by the music pages
+  addToQueue: (botId, guildId, query) => get().play(botId, guildId, query),
+  shuffleQueue: (botId, guildId) => get().shuffle(botId, guildId),
+  removeFromQueue: (botId, guildId, index) => get().removeTrack(botId, guildId, index),
+  toggleLoop: async (botId, guildId) => {
+    const current = get().getQueue(botId, guildId).loopMode
+    const next = current === 'off' ? 'track' : current === 'track' ? 'queue' : 'off'
+    return get().setLoop(botId, guildId, next)
   },
 
   // Update queue from socket event
@@ -165,7 +211,7 @@ export const useMusicStore = create((set, get) => ({
     set((state) => ({
       queues: {
         ...state.queues,
-        [key]: queueData
+        [key]: normalizeQueue(queueData)
       }
     }))
   },
@@ -178,7 +224,7 @@ export const useMusicStore = create((set, get) => ({
         ...state.queues,
         [key]: {
           ...state.queues[key],
-          current: trackData.track,
+          currentTrack: trackData.track,
           isPlaying: trackData.isPlaying,
           position: trackData.position
         }

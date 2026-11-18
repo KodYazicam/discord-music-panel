@@ -17,7 +17,14 @@ const dbModulePath = require.resolve('../src/database/db');
 require.cache[dbModulePath] = {
     id: dbModulePath, filename: dbModulePath, loaded: true,
     exports: {
-        userOperations: {}, playlistOperations: {},
+        userOperations: {
+            getById: (id) => ({
+                id: Number(id),
+                username: `user-${id}`,
+                role: Number(id) === 9 ? 'admin' : 'user'
+            })
+        },
+        playlistOperations: {},
         settingOperations: { get: (_key, fallback) => fallback },
         botOperations: { getById: (id) => bots.find((bot) => bot.id === String(id)) || null, getAll: () => bots },
         guildOperations: { getGuildsForBots: (botIds) => guilds.filter((row) => ids(botIds).includes(row.bot_id)) },

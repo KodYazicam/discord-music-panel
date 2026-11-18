@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useBotStore } from '../stores/botStore'
-import { useMusicStore } from '../stores/musicStore'
+import { useMusicStore, selectQueue } from '../stores/musicStore.js'
 import api from '../utils/api'
 import {
   AlertTriangle,
@@ -19,7 +19,9 @@ import {
 function GuildDetail() {
   const { botId, guildId } = useParams()
   const { selectedBot, fetchBot, fetchBotGuilds } = useBotStore()
-  const { currentTrack, isPlaying, queue, fetchQueue } = useMusicStore()
+  const { fetchQueue } = useMusicStore()
+  const queueData = useMusicStore((state) => selectQueue(state, botId, guildId))
+  const { tracks: queue, currentTrack, isPlaying } = queueData
   
   const [guild, setGuild] = useState(null)
   const [settings, setSettings] = useState({

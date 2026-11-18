@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useMusicStore } from '../stores/musicStore'
+import { useMusicStore, selectQueue } from '../stores/musicStore.js'
 import { useBotStore } from '../stores/botStore'
 import {
   ArrowLeft,
   Play,
   Pause,
   SkipForward,
-  SkipBack,
   Volume2,
   VolumeX,
   Repeat,
@@ -26,31 +25,24 @@ import {
 function MusicControl() {
   const { botId, guildId } = useParams()
   const { selectedBot, fetchBot } = useBotStore()
-  const { 
-    queue, 
-    currentTrack, 
-    isPlaying, 
-    volume,
-    loopMode,
-    fetchQueue, 
-    play, 
-    pause, 
-    resume, 
-    skip, 
-    stop,
+  const {
+    fetchQueue,
+    pause,
+    resume,
+    skip,
     setVolume,
     toggleLoop,
     shuffleQueue,
     removeFromQueue,
     clearQueue,
-    addToQueue,
-    isLoading
+    addToQueue
   } = useMusicStore()
+  const queueData = useMusicStore((state) => selectQueue(state, botId, guildId))
+  const { tracks: queue, currentTrack, isPlaying, volume, loopMode, position } = queueData
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [showSearch, setShowSearch] = useState(false)
+  const [isAdding, setIsAdding] = useState(false)
+  const [actionError, setActionError] = useState('')
   const [localVolume, setLocalVolume] = useState(100)
 
   useEffect(() => {
@@ -62,28 +54,20 @@ function MusicControl() {
     setLocalVolume(volume)
   }, [volume])
 
-  const handleSearch = async (e) => {
+  const handleAddTrack = async (e) => {
     e.preventDefault()
-    if (!searchQuery.trim()) return
+    const query = searchQuery.trim()
+    if (!query || isAdding) return
 
-    setIsSearching(true)
-    // Normalde burada API'ye arama isteği gönderilir
-    // Şimdilik simüle ediyoruz
-    setTimeout(() => {
-      setSearchResults([
-        { id: 1, title: 'Sample Track 1', artist: 'Artist 1', duration: '3:45' },
-        { id: 2, title: 'Sample Track 2', artist: 'Artist 2', duration: '4:20' },
-        { id: 3, title: 'Sample Track 3', artist: 'Artist 3', duration: '3:30' },
-      ])
-      setIsSearching(false)
-    }, 1000)
-  }
-
-  const handleAddTrack = async (track) => {
-    await addToQueue(botId, guildId, track.url || `search:${track.title}`)
-    setSearchResults([])
-    setSearchQuery('')
-    setShowSearch(false)
+    setIsAdding(true)
+    setActionError('')
+    const result = await addToQueue(botId, guildId, query)
+    if (result.success) {
+      setSearchQuery('')
+    } else {
+      setActionError(result.error || 'Could not add the track')
+    }
+    setIsAdding(false)
   }
 
   const handleVolumeChange = (e) => {
@@ -102,7 +86,6 @@ function MusicControl() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const loopModes = ['off', 'track', 'queue']
   const loopLabels = { off: 'Off', track: 'Track', queue: 'Queue' }
 
   return (
@@ -120,6 +103,12 @@ function MusicControl() {
           <p className="text-discord-muted">{selectedBot?.name}</p>
         </div>
       </div>
+
+      {actionError && (
+        <div className="p-3 bg-discord-red/10 border border-discord-red/30 rounded-md text-discord-red text-sm">
+          {actionError}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Player */}
@@ -167,11 +156,11 @@ function MusicControl() {
                   <div className="h-1 bg-discord-darker rounded-full overflow-hidden">
                     <div 
                       className="h-full bg-discord-primary transition-all duration-300"
-                      style={{ width: `${(currentTrack.progress / currentTrack.duration) * 100 || 0}%` }}
+                      style={{ width: `${(position / currentTrack.duration) * 100 || 0}%` }}
                     />
                   </div>
                   <div className="flex justify-between text-xs text-discord-muted">
-                    <span>{formatDuration(currentTrack.progress)}</span>
+                    <span>{formatDuration(position)}</span>
                     <span>{formatDuration(currentTrack.duration)}</span>
                   </div>
                 </div>
@@ -194,14 +183,6 @@ function MusicControl() {
                 title="Shuffle"
               >
                 <Shuffle className="w-5 h-5" />
-              </button>
-
-              <button
-                onClick={() => skip(botId, guildId, -1)}
-                className="p-2 rounded-full hover:bg-discord-lightest text-discord-text transition-colors"
-                title="Previous"
-              >
-                <SkipBack className="w-6 h-6" />
               </button>
 
               <button
@@ -273,7 +254,7 @@ function MusicControl() {
               </h2>
             </div>
 
-            <form onSubmit={handleSearch} className="flex gap-2">
+            <form onSubmit={handleAddTrack} className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-discord-muted" />
                 <input
@@ -286,44 +267,16 @@ function MusicControl() {
               </div>
               <button
                 type="submit"
-                disabled={isSearching || !searchQuery.trim()}
+                disabled={isAdding || !searchQuery.trim()}
                 className="btn btn-primary"
               >
-                {isSearching ? (
+                {isAdding ? (
                   <Loader className="w-5 h-5 animate-spin" />
                 ) : (
-                  'Search'
+                  'Add'
                 )}
               </button>
             </form>
-
-            {/* Search Results */}
-            {searchResults.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <h3 className="text-sm font-medium text-discord-muted mb-2">Search Results</h3>
-                {searchResults.map((track) => (
-                  <div
-                    key={track.id}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-discord-lightest transition-colors"
-                  >
-                    <div className="w-10 h-10 rounded bg-discord-darker flex items-center justify-center">
-                      <Music className="w-5 h-5 text-discord-muted" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{track.title}</p>
-                      <p className="text-xs text-discord-muted truncate">{track.artist}</p>
-                    </div>
-                    <span className="text-xs text-discord-muted">{track.duration}</span>
-                    <button
-                      onClick={() => handleAddTrack(track)}
-                      className="p-2 rounded-full hover:bg-discord-light text-discord-primary"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 

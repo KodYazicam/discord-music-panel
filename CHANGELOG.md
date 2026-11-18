@@ -59,6 +59,17 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `!skip` / `/skip` and the panel's `music:skip` event now advance the queue
+  while single-track loop is enabled. Previously the Idle handler replayed the
+  same track and only reported success, so a guild in loop mode could not skip
+  at all. Manual skips bypass the track-loop replay once without changing the
+  user's loop setting; queue-loop rotation is unchanged.
+- The music dashboard pages no longer crash and every control now posts to
+  `/api/bots/:id/guilds/:guildId/command` instead of the non-existent
+  `/api/music/*` tree; queue payloads are normalised across REST and Socket.IO.
+- `MusicBot.play()` accepts a missing `voiceChannelId` for an already-connected
+  guild; a cold start still returns `Voice channel not found`.
+
 - The dashboard and statistics pages read real, caller-scoped numbers from
   `GET /api/stats/overview` and `/stats/recent-activity`; no invented sample
   data, trend percentages, or fixed chart.
@@ -82,6 +93,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- REST `authMiddleware` and the Socket.IO handshake now re-read the session user
+  through `resolveSessionUser` (`src/utils/access.js`) instead of trusting the
+  JWT claims. Deleting or demoting an account therefore takes effect
+  immediately: a deleted token gets `401 Session is no longer valid` (or
+  `Invalid token` on the socket) and a demoted admin loses admin routes, rather
+  than keeping the old role until the 24-hour token expired. An already-open
+  socket is still validated at handshake only and is cut off on reconnect.
 - Socket.IO handlers now answer through a shared `respond(callback, payload)`
   helper that skips a missing acknowledgement callback. Previously a client
   could emit `bots:list` or `stats:global` without an ack, make the listener

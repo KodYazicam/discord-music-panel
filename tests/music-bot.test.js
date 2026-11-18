@@ -314,6 +314,82 @@ test('skip stops the player without clearing the queue', (t) => {
     assert.deepEqual(queue.tracks, [track]);
 });
 
+test('skip advances instead of replaying when track loop is enabled', async (t) => {
+    const { bot, guildId, attachQueue, attachPlayer, attachConnection } = createHarness(t);
+    const first = makeTrack(1);
+    const second = makeTrack(2);
+    const queue = attachQueue([first, second]);
+    const player = attachPlayer();
+    attachConnection();
+    queue.loop = true;
+
+    const played = [];
+    queue.createResource = async track => {
+        const resource = createResource();
+        played.push({ track, resource });
+        return resource;
+    };
+
+    await bot.startPlayback(guildId);
+    assert.equal(queue.currentTrack, first);
+
+    assert.deepEqual(bot.skip(guildId), { success: true, message: 'Skipped' });
+    assert.equal(player.calls.stop, 1);
+
+    // AudioPlayer.stop() emits Idle; replay the transition the real player makes.
+    bot.handleTrackEnd(guildId);
+    await flush();
+
+    assert.equal(queue.isPlaying, true);
+    assert.equal(queue.currentTrack, second);
+    assert.deepEqual(queue.tracks, [second]);
+    assert.deepEqual(played.map(entry => entry.track), [first, second]);
+});
+
+test('skip advances exactly once when track loop is off', async (t) => {
+    const { bot, guildId, attachQueue, attachPlayer, attachConnection } = createHarness(t);
+    const first = makeTrack(1);
+    const second = makeTrack(2);
+    const queue = attachQueue([first, second]);
+    attachPlayer();
+    attachConnection();
+
+    const played = [];
+    queue.createResource = async track => {
+        const resource = createResource();
+        played.push(track);
+        return resource;
+    };
+
+    await bot.startPlayback(guildId);
+    bot.skip(guildId);
+    bot.handleTrackEnd(guildId);
+    await flush();
+
+    assert.equal(queue.currentTrack, second);
+    assert.deepEqual(queue.tracks, [second]);
+    assert.deepEqual(played, [first, second]);
+});
+
+test('skip keeps queue-loop rotation when queue loop is enabled', async (t) => {
+    const { bot, guildId, attachQueue, attachPlayer, attachConnection } = createHarness(t);
+    const first = makeTrack(1);
+    const second = makeTrack(2);
+    const queue = attachQueue([first, second]);
+    attachPlayer();
+    attachConnection();
+    queue.loopQueue = true;
+    queue.createResource = async () => createResource();
+
+    await bot.startPlayback(guildId);
+    bot.skip(guildId);
+    bot.handleTrackEnd(guildId);
+    await flush();
+
+    assert.equal(queue.currentTrack, second);
+    assert.deepEqual(queue.tracks, [second, first]);
+});
+
 test('stopPlayback stops the player, clears the queue, and emits stop', (t) => {
     const { bot, io, guildId, attachQueue, attachPlayer } = createHarness(t);
     const queue = attachQueue([makeTrack(1)]);
@@ -364,6 +440,26 @@ test('play reports a missing guild and a missing voice channel', async (t) => {
     attachGuild();
 
     assert.equal((await bot.play(guildId, 'query', 'missing-voice')).message, 'Voice channel not found');
+    assert.equal((await bot.play(guildId, 'query')).message, 'Voice channel not found');
+});
+
+test('play queues into an active connection without a voice channel id', async (t) => {
+    const { bot, guildId, attachQueue, attachPlayer, attachConnection, attachGuild } = createHarness(t);
+    attachGuild();
+    const queue = attachQueue([]);
+    attachPlayer();
+    attachConnection();
+
+    const track = makeTrack(1);
+    queue.search = async () => [track];
+    queue.createResource = async () => createResource();
+
+    const result = await bot.play(guildId, 'panel query');
+
+    assert.equal(result.success, true);
+    assert.deepEqual(queue.tracks, [track]);
+    assert.equal(queue.currentTrack, track);
+    assert.equal((await bot.play(guildId, 'panel query', 'missing-voice')).message, 'Voice channel not found');
 });
 
 test('play returns a failure result when the search throws', async (t) => {
