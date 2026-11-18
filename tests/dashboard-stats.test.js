@@ -69,8 +69,8 @@ test('GET /api/stats/overview aggregates only the bots the caller can manage', a
 });
 
 test('GET /api/stats/overview serves admins without a 404', async () => {
-    const admin = await (await get('/stats/overview', { id: 9, username: 'root', role: 'admin' })).json();
-    assert.deepEqual([admin.totalBots, admin.totalGuilds, admin.totalTracksPlayed], [2, 2, 1020]);
+    const admin = await (await get('/stats/overview?days=30', { id: 9, username: 'root', role: 'admin' })).json();
+    assert.deepEqual([admin.totalBots, admin.totalGuilds, admin.totalTracksPlayed, admin.days], [2, 2, 1020, 30]);
 });
 
 test('GET /api/stats/recent-activity keeps command logs inside the caller scope', async () => {
@@ -79,5 +79,5 @@ test('GET /api/stats/recent-activity keeps command logs inside the caller scope'
     assert.equal(response.status, 200);
     assert.equal(body.activities.length, 1);
     assert.equal(body.activities[0].message, 'play in Alice Guild');
-    assert.equal(body.activities[0].time, '2026-11-18 09:00:00');
+    assert.match(body.activities[0].time, /^2026-11-18T09:00:00/);
 });

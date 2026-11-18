@@ -6,7 +6,6 @@ import {
   Bot,
   Server,
   Music,
-  Users,
   Activity,
   TrendingUp,
   Clock,
@@ -190,10 +189,10 @@ function Dashboard() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-discord-muted">
-                  <Users className="w-4 h-4" />
-                  <span>Active Listeners</span>
+                  <TrendingUp className="w-4 h-4" />
+                  <span>Commands Used</span>
                 </div>
-                <span className="font-semibold text-white">{stats.activeListeners || 0}</span>
+                <span className="font-semibold text-white">{(stats.totalCommands || 0).toLocaleString()}</span>
               </div>
             </div>
           </div>

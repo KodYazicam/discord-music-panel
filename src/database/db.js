@@ -420,16 +420,17 @@ const statisticsOperations = {
         `).get(...botIds);
     },
 
-    getDailySeriesForBots: (botIds) => {
+    getDailySeriesForBots: (botIds, days = 7) => {
         if (!Array.isArray(botIds) || botIds.length === 0) return [];
+        const span = Math.min(Math.max(Number(days) || 7, 1), 365);
         return db.prepare(`
             SELECT date, COALESCE(SUM(songs_played), 0) as songs_played,
                    COALESCE(SUM(total_playtime), 0) as total_playtime,
                    COALESCE(SUM(commands_used), 0) as commands_used
             FROM statistics
-            WHERE bot_id IN (${placeholdersFor(botIds)}) AND date >= date('now', '-6 days')
+            WHERE bot_id IN (${placeholdersFor(botIds)}) AND date >= date('now', ?)
             GROUP BY date ORDER BY date ASC
-        `).all(...botIds);
+        `).all(...botIds, `-${span - 1} days`);
     }
 };
 

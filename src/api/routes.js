@@ -28,6 +28,11 @@ const { metricsEnabled, requestMetricsMiddleware, createMetricsAuth, renderMetri
 const logger = new Logger('API');
 
 // Bots the caller may read: admins see every bot, others only their own.
+function clampDays(value, fallback = 7) {
+    const days = Number(value);
+    return Number.isFinite(days) ? Math.min(Math.max(Math.trunc(days), 1), 365) : fallback;
+}
+
 function scopedBotList(req) {
     const allBots = req.app.get('botManager')?.getAllBots?.() || [];
     if (isAdmin(req.user)) return allBots;
@@ -680,9 +685,10 @@ function setupRoutes(app) {
         try {
             const bots = scopedBotList(req);
             const botIds = bots.map((bot) => bot.id);
+            const days = clampDays(req.query.days, 7);
             const totals = statisticsOperations.getTotalsForBots(botIds) || {};
             const guildIds = new Set((guildOperations.getGuildsForBots(botIds) || []).map((row) => row.guild_id));
-            const dailyRows = statisticsOperations.getDailySeriesForBots(botIds) || [];
+            const dailyRows = statisticsOperations.getDailySeriesForBots(botIds, days) || [];
             const activeQueues = bots.reduce((sum, bot) => sum + (Number(bot.playingCount) || 0), 0);
 
             res.json({
@@ -694,6 +700,7 @@ function setupRoutes(app) {
                 totalPlaytime: Number(totals.total_playtime) || 0,
                 totalCommands: Number(totals.total_commands) || 0,
                 activeQueues,
+                days,
                 daily: dailyRows.map((row) => ({
                     date: row.date, songs: Number(row.songs_played) || 0,
                     playtime: Number(row.total_playtime) || 0, commands: Number(row.commands_used) || 0
@@ -711,8 +718,9 @@ function setupRoutes(app) {
             const botIds = scopedBotList(req).map((bot) => bot.id);
             const activities = logOperations.getRecentForBots(botIds, 10).map((row) => {
                 const guild = row.guild_name || row.guild_id;
+                const time = new Date(`${String(row.executed_at).replace(' ', 'T')}Z`).toISOString();
                 return { command: row.command, guild, message: `${row.command} in ${guild}`,
-                    botId: row.bot_id, guildId: row.guild_id, time: row.executed_at };
+                    botId: row.bot_id, guildId: row.guild_id, time };
             });
             res.json({ success: true, activities });
         } catch (error) {

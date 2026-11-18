@@ -7,7 +7,8 @@ import {
   Music,
   Clock,
   Bot,
-  Server
+  Server,
+  Calendar
 } from 'lucide-react'
 
 function formatDuration(seconds) {
@@ -19,6 +20,7 @@ function formatDuration(seconds) {
 
 function Statistics() {
   const { bots, fetchBots } = useBotStore()
+  const [timeRange, setTimeRange] = useState('week')
   const [isLoading, setIsLoading] = useState(true)
   const [overview, setOverview] = useState(null)
   const [error, setError] = useState(null)
@@ -26,7 +28,7 @@ function Statistics() {
   const loadOverview = useCallback(async () => {
     setIsLoading(true)
     try {
-      const response = await api.get('/stats/overview')
+      const response = await api.get('/stats/overview', { params: { days: { day: 1, week: 7, month: 30, year: 365 }[timeRange] } })
       setOverview(response.data)
       setError(null)
     } catch {
@@ -35,7 +37,7 @@ function Statistics() {
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [timeRange])
 
   useEffect(() => {
     fetchBots()
@@ -44,6 +46,13 @@ function Statistics() {
   useEffect(() => {
     loadOverview()
   }, [loadOverview])
+
+  const timeRanges = [
+    { value: 'day', label: 'Today' },
+    { value: 'week', label: 'This Week' },
+    { value: 'month', label: 'This Month' },
+    { value: 'year', label: 'This Year' }
+  ]
 
   const daily = overview?.daily || []
   const onlineBots = overview?.onlineBots || 0
@@ -66,6 +75,20 @@ function Statistics() {
           <h1 className="text-2xl font-bold text-white">Statistics</h1>
           <p className="text-discord-muted">Track your bot's activity and performance</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-discord-muted" />
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value)}
+            className="input w-40"
+          >
+            {timeRanges.map((range) => (
+              <option key={range.value} value={range.value}>
+                {range.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {error && <p className="text-discord-red">{error}</p>}
@@ -78,7 +101,7 @@ function Statistics() {
             <Music className="w-5 h-5 text-discord-primary" />
           </div>
           <p className="text-2xl font-bold text-white">{totalSongs.toLocaleString()}</p>
-          <div className="text-sm text-discord-muted mt-1">last 7 days</div>
+          <div className="text-sm text-discord-muted mt-1">in the selected range</div>
         </div>
 
         <div className="card">
@@ -114,12 +137,12 @@ function Statistics() {
         <div className="lg:col-span-2 card">
           <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
             <BarChart3 className="w-5 h-5" />
-            Tracks Played (last 7 days)
+            Tracks Played
           </h2>
 
           {/* Simple Bar Chart */}
           {daily.length === 0 ? (
-            <p className="text-discord-muted text-center py-16">No tracks played in the last 7 days.</p>
+            <p className="text-discord-muted text-center py-16">No tracks played in this range yet.</p>
           ) : (
             <div className="flex items-end justify-between gap-2 h-48">
               {daily.map((entry) => (
