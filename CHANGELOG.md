@@ -59,6 +59,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `!skip` / `/skip` and the panel's `music:skip` event now advance the queue
+  while single-track loop is enabled. Previously the Idle handler replayed the
+  same track and only reported success, so a guild in loop mode could not skip
+  at all. Manual skips bypass the track-loop replay once without changing the
+  user's loop setting; queue-loop rotation is unchanged.
 - The dashboard shell now declares `lang="en"` and an English meta description
   instead of Turkish, matching the English UI and fixing screen-reader and
   browser-translation heuristics.

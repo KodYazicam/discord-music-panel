@@ -148,11 +148,13 @@ class MusicQueue {
     }
 
     /**
-     * Advance to next track
+     * Advance to next track.
+     * @param {boolean} force - advance even when single-track loop is on
+     *   (used by a manual skip; the loop setting itself is preserved)
      */
-    nextTrack() {
+    nextTrack(force = false) {
         // Remove current track from queue if not looping
-        if (!this.loop && this.tracks.length > 0) {
+        if ((force || !this.loop) && this.tracks.length > 0) {
             this.tracks.shift();
         }
         

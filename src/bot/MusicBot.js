@@ -63,6 +63,9 @@ class MusicBot {
         // Voice connections per guild
         this.connections = new Map(); // guildId -> VoiceConnection
         this.skipAdvance = new Set();
+        // Manual skips: consume the next Idle transition without replaying a
+        // single-track loop. Natural track ends are unaffected.
+        this.forceAdvance = new Set();
 
         // Statistics
         this.stats = {
@@ -296,6 +299,8 @@ class MusicBot {
         this.queues.clear();
         this.players.clear();
         this.connections.clear();
+        this.skipAdvance.clear();
+        this.forceAdvance.clear();
         
         // Destroy client
         this.client.destroy();
@@ -642,6 +647,7 @@ class MusicBot {
      * Leave a voice channel
      */
     leaveVoice(guildId) {
+        this.forceAdvance.delete(guildId);
         const connection = this.connections.get(guildId);
         if (connection) {
             connection.destroy();
@@ -669,6 +675,7 @@ class MusicBot {
      * Handle bot disconnect
      */
     handleBotDisconnect(guildId) {
+        this.forceAdvance.delete(guildId);
         this.connections.delete(guildId);
         this.players.delete(guildId);
         
@@ -765,6 +772,9 @@ class MusicBot {
             return;
         }
 
+        // A manual skip wins over single-track loop; consume the flag once.
+        const forceAdvance = this.forceAdvance.delete(guildId);
+
         // Update playtime stats
         if (queue.currentTrack && queue.startTime) {
             const playtime = Math.floor((Date.now() - queue.startTime) / 1000);
@@ -773,7 +783,7 @@ class MusicBot {
         }
 
         // Handle loop modes
-        if (queue.loop && queue.currentTrack) {
+        if (!forceAdvance && queue.loop && queue.currentTrack) {
             // Loop single track - don't advance
             this.startPlayback(guildId, textChannel);
             return;
@@ -785,7 +795,7 @@ class MusicBot {
         }
 
         // Advance to next track
-        queue.nextTrack();
+        queue.nextTrack(forceAdvance);
 
         // Check if queue is empty
         if (queue.tracks.length === 0) {
@@ -866,6 +876,8 @@ class MusicBot {
             return { success: false, message: 'Nothing is playing' };
         }
 
+        // A user-initiated skip must advance even when single-track loop is on.
+        this.forceAdvance.add(guildId);
         player.stop();
         
         return { success: true, message: 'Skipped' };
@@ -875,6 +887,7 @@ class MusicBot {
      * Stop playback and clear queue
      */
     stopPlayback(guildId) {
+        this.forceAdvance.delete(guildId);
         const player = this.players.get(guildId);
         const queue = this.queues.get(guildId);
         
