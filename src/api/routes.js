@@ -18,7 +18,7 @@ try {
     helmet = () => (_req, _res, next) => next();
 }
 const { Logger } = require('../utils/Logger');
-const { userOperations, botOperations, statisticsOperations, playlistOperations, settingOperations, guildOperations } = require('../database/db');
+const { userOperations, botOperations, statisticsOperations, playlistOperations, settingOperations, guildOperations, logOperations } = require('../database/db');
 const { isAdmin, requireBotAccess } = require('../utils/access');
 const { normalizePresets, PresetValidationError } = require('../utils/presets');
 const { getJwtSecret } = require('../utils/jwt-secret');
@@ -26,6 +26,15 @@ const { checkYtDlpHealth } = require('../bot/ytdlp');
 const { metricsEnabled, requestMetricsMiddleware, createMetricsAuth, renderMetrics } = require('./metrics');
 
 const logger = new Logger('API');
+
+// Bots the caller may read: admins see every bot, others only their own.
+function scopedBotList(req) {
+    const allBots = req.app.get('botManager')?.getAllBots?.() || [];
+    if (isAdmin(req.user)) return allBots;
+    return allBots.filter(
+        (bot) => Number(bot.createdBy ?? bot.created_by) === Number(req.user?.id)
+    );
+}
 
 /**
  * Setup all API routes
@@ -662,6 +671,52 @@ function setupRoutes(app) {
             });
         } catch (error) {
             logger.error('Error getting stats:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    // Registered before /stats/:botId so the literal path is never a bot id.
+    router.get('/stats/overview', authMiddleware, (req, res) => {
+        try {
+            const bots = scopedBotList(req);
+            const botIds = bots.map((bot) => bot.id);
+            const totals = statisticsOperations.getTotalsForBots(botIds) || {};
+            const guildIds = new Set((guildOperations.getGuildsForBots(botIds) || []).map((row) => row.guild_id));
+            const dailyRows = statisticsOperations.getDailySeriesForBots(botIds) || [];
+            const activeQueues = bots.reduce((sum, bot) => sum + (Number(bot.playingCount) || 0), 0);
+
+            res.json({
+                success: true,
+                totalBots: bots.length,
+                onlineBots: bots.filter((bot) => bot.status === 'online').length,
+                totalGuilds: guildIds.size,
+                totalTracksPlayed: Number(totals.total_songs) || 0,
+                totalPlaytime: Number(totals.total_playtime) || 0,
+                totalCommands: Number(totals.total_commands) || 0,
+                activeQueues,
+                daily: dailyRows.map((row) => ({
+                    date: row.date, songs: Number(row.songs_played) || 0,
+                    playtime: Number(row.total_playtime) || 0, commands: Number(row.commands_used) || 0
+                }))
+            });
+        } catch (error) {
+            logger.error('Error getting stats overview:', error);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    // Recent command logs of the caller's bots, for the dashboard feed.
+    router.get('/stats/recent-activity', authMiddleware, (req, res) => {
+        try {
+            const botIds = scopedBotList(req).map((bot) => bot.id);
+            const activities = logOperations.getRecentForBots(botIds, 10).map((row) => {
+                const guild = row.guild_name || row.guild_id;
+                return { command: row.command, guild, message: `${row.command} in ${guild}`,
+                    botId: row.bot_id, guildId: row.guild_id, time: row.executed_at };
+            });
+            res.json({ success: true, activities });
+        } catch (error) {
+            logger.error('Error getting recent activity:', error);
             res.status(500).json({ success: false, error: error.message });
         }
     });

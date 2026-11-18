@@ -307,6 +307,10 @@ const botOperations = {
     }
 };
 
+function placeholdersFor(ids) {
+    return ids.map(() => '?').join(', ');
+}
+
 // Guild operations
 const guildOperations = {
     upsert: (botId, guildId, guildName, memberCount) => {
@@ -322,6 +326,14 @@ const guildOperations = {
 
     getByBot: (botId) => {
         return db.prepare('SELECT * FROM bot_guilds WHERE bot_id = ?').all(botId);
+    },
+
+    getGuildsForBots: (botIds) => {
+        if (!Array.isArray(botIds) || botIds.length === 0) return [];
+        return db.prepare(`
+            SELECT bot_id, guild_id, guild_name FROM bot_guilds
+            WHERE bot_id IN (${placeholdersFor(botIds)})
+        `).all(...botIds);
     },
 
     getSettings: (botId, guildId) => {
@@ -392,6 +404,32 @@ const statisticsOperations = {
                 SUM(commands_used) as total_commands
             FROM statistics
         `).get();
+    },
+
+    // Panel overview: every aggregate is limited to the bot ids the caller can
+    // manage, so one operator's totals never include another operator's bots.
+    getTotalsForBots: (botIds) => {
+        if (!Array.isArray(botIds) || botIds.length === 0) {
+            return { total_songs: 0, total_playtime: 0, total_commands: 0 };
+        }
+        return db.prepare(`
+            SELECT COALESCE(SUM(songs_played), 0) as total_songs,
+                   COALESCE(SUM(total_playtime), 0) as total_playtime,
+                   COALESCE(SUM(commands_used), 0) as total_commands
+            FROM statistics WHERE bot_id IN (${placeholdersFor(botIds)})
+        `).get(...botIds);
+    },
+
+    getDailySeriesForBots: (botIds) => {
+        if (!Array.isArray(botIds) || botIds.length === 0) return [];
+        return db.prepare(`
+            SELECT date, COALESCE(SUM(songs_played), 0) as songs_played,
+                   COALESCE(SUM(total_playtime), 0) as total_playtime,
+                   COALESCE(SUM(commands_used), 0) as commands_used
+            FROM statistics
+            WHERE bot_id IN (${placeholdersFor(botIds)}) AND date >= date('now', '-6 days')
+            GROUP BY date ORDER BY date ASC
+        `).all(...botIds);
     }
 };
 
@@ -451,6 +489,17 @@ const logOperations = {
             VALUES (?, ?, ?, ?, ?)
         `);
         return stmt.run(botId, guildId, userId, command, JSON.stringify(args));
+    },
+
+    // Recent logs across the caller's bots, with guild names for the panel.
+    getRecentForBots: (botIds, limit = 10) => {
+        if (!Array.isArray(botIds) || botIds.length === 0) return [];
+        const size = Math.min(Math.max(Number(limit) || 10, 1), 50);
+        return db.prepare(`
+            SELECT l.*, g.guild_name FROM command_logs l
+            LEFT JOIN bot_guilds g ON g.bot_id = l.bot_id AND g.guild_id = l.guild_id
+            WHERE l.bot_id IN (${placeholdersFor(botIds)}) ORDER BY l.executed_at DESC LIMIT ?
+        `).all(...botIds, size);
     },
 
     getRecent: (botId, limit = 100) => {
