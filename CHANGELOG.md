@@ -70,6 +70,9 @@ All notable changes to this project are documented here. The format follows
 - `MusicBot.play()` accepts a missing `voiceChannelId` for an already-connected
   guild; a cold start still returns `Voice channel not found`.
 
+- The dashboard and statistics pages read real, caller-scoped numbers from
+  `GET /api/stats/overview` and `/stats/recent-activity`; no invented sample
+  data, trend percentages, or fixed chart.
 - The dashboard shell now declares `lang="en"` and an English meta description
   instead of Turkish, matching the English UI and fixing screen-reader and
   browser-translation heuristics.

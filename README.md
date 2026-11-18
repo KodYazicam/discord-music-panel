@@ -868,6 +868,14 @@ Content-Type: application/json
 
 All fields are optional; only the allowlisted keys above are accepted. `volume` is an integer `0-200`, `maxQueueSize` is `1-500`, and `defaultLoopMode` is `off`, `track`, or `queue`. Unknown keys and invalid values return `400`. Presets apply when a guild queue is created and immediately to an active queue; the response reports `appliedToActiveQueue`.
 
+### Dashboard statistics
+
+`GET /api/stats/overview` returns caller-scoped `totalBots`, `onlineBots`,
+`totalGuilds`, `totalTracksPlayed`, `totalPlaytime` (seconds), `totalCommands`,
+`activeQueues` and a 7-day `daily` series. `GET /api/stats/recent-activity`
+returns the caller's ten latest command logs. Admins see every bot; other users
+only the bots they created.
+
 ### Music
 
 There is no `/api/music/...` tree. Playback goes through the bot command endpoint.
