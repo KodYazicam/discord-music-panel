@@ -621,3 +621,78 @@ test('play keeps bot defaults when preset loading fails', async (t) => {
     assert.equal(queue.volume, 100);
     assert.equal(queue.maxQueueSize, 10);
 });
+
+test('removing the playing track advances to the next track instead of skipping it', async (t) => {
+    const { bot, guildId, attachQueue, attachPlayer, attachConnection } = createHarness(t);
+    const first = makeTrack(1);
+    const second = makeTrack(2);
+    const third = makeTrack(3);
+    const queue = attachQueue([first, second, third]);
+    const player = attachPlayer();
+    attachConnection();
+
+    const played = [];
+    queue.createResource = async track => {
+        played.push(track.title);
+        return createResource();
+    };
+
+    await bot.startPlayback(guildId);
+    assert.equal(queue.currentTrack, first);
+
+    // The dashboard trash button and `/remove 1` both target index 0, the
+    // playing track. Removing it must not consume the following track.
+    assert.deepEqual(bot.removeTrack(guildId, 0), { success: true, message: 'Removed "Track 1"' });
+    assert.deepEqual(queue.tracks, [second, third]);
+    assert.equal(queue.currentTrack, second);
+    assert.equal(player.calls.stop, 1);
+
+    // The mocked player does not emit Idle; run the handler the voice player
+    // calls when its resource ends.
+    bot.handleTrackEnd(guildId);
+    await flush();
+
+    assert.deepEqual(played, ['Track 1', 'Track 2']);
+    assert.equal(queue.currentTrack, second);
+    assert.equal(queue.isPlaying, true);
+});
+
+test('removing the last playing track stops the player and ends the queue', async (t) => {
+    const { bot, io, guildId, attachQueue, attachPlayer, attachConnection } = createHarness(t);
+    const queue = attachQueue([makeTrack(1)]);
+    const player = attachPlayer();
+    attachConnection();
+    queue.createResource = async () => createResource();
+
+    await bot.startPlayback(guildId);
+
+    assert.deepEqual(bot.removeTrack(guildId, 0), { success: true, message: 'Removed "Track 1"' });
+    assert.deepEqual(queue.tracks, []);
+    assert.equal(queue.currentTrack, null);
+    assert.equal(player.calls.stop, 1);
+
+    bot.handleTrackEnd(guildId);
+    await flush();
+
+    assert.equal(queue.isPlaying, false);
+    assert.equal(queue.currentTrack, null);
+    assert.ok(io.emitted.some(event => event.name === 'queue:ended'));
+});
+
+test('removing an upcoming track leaves the playing track untouched', async (t) => {
+    const { bot, guildId, attachQueue, attachPlayer, attachConnection } = createHarness(t);
+    const first = makeTrack(1);
+    const second = makeTrack(2);
+    const third = makeTrack(3);
+    const queue = attachQueue([first, second, third]);
+    const player = attachPlayer();
+    attachConnection();
+    queue.createResource = async () => createResource();
+
+    await bot.startPlayback(guildId);
+
+    assert.deepEqual(bot.removeTrack(guildId, 1), { success: true, message: 'Removed "Track 2"' });
+    assert.deepEqual(queue.tracks, [first, third]);
+    assert.equal(queue.currentTrack, first);
+    assert.equal(player.calls.stop, 0);
+});

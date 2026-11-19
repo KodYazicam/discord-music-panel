@@ -997,10 +997,31 @@ class MusicBot {
             return { success: false, message: 'No active queue' };
         }
 
+        // tracks[0] is the playing track (see MusicQueue.nextTrack). Removing
+        // it without moving playback leaves currentTrack on a track that is no
+        // longer queued; the next handleTrackEnd() would then shift the
+        // following track and silently skip it.
+        const removingCurrent = index === 0 && queue.isPlaying && queue.currentTrack !== null;
+
         const removed = queue.removeTrack(index);
         
         if (!removed) {
             return { success: false, message: 'Invalid track index' };
+        }
+
+        if (removingCurrent) {
+            const player = this.players.get(guildId);
+            if (queue.tracks.length > 0) {
+                queue.currentTrack = queue.tracks[0];
+                queue.currentIndex = 0;
+                // The Idle event must start the new head, not advance past it.
+                if (player) this.skipAdvance.add(guildId);
+            } else {
+                queue.currentTrack = null;
+                queue.currentIndex = -1;
+            }
+            // Stop the removed audio; handleTrackEnd() resumes (or ends) the queue.
+            player?.stop();
         }
 
         this.emitToGuild(guildId, ['queue:update', 'music:queueUpdate'], {
