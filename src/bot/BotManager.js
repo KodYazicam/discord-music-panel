@@ -79,7 +79,8 @@ class BotManager {
                 clientId: config.client_id,
                 prefix: config.prefix,
                 prefixType: config.prefix_type,
-                volume: config.volume || 100,
+                // Preserve an explicit 0 (mute); only a missing column uses the default.
+                volume: config.volume ?? 100,
                 maxQueueSize: config.max_queue_size || 500,
                 defaultSearchEngine: config.default_search_engine || 'youtube',
                 announceSongs: config.announce_songs === 1,

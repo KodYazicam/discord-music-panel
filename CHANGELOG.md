@@ -72,6 +72,10 @@ All notable changes to this project are documented here. The format follows
   now stops the player and starts the new head; removing the last track ends
   the queue. Applies to `/remove 1`, `!remove 1`, the dashboard trash button,
   and `music:remove`.
+- A stored volume of `0` (mute) is now kept when a bot starts and when a queue
+  is created, instead of being replaced by the `100%` default. `/volume` and
+  `!volume` with no argument also report `0%` for a muted queue. Only a missing
+  volume falls back to `100`, matching the database default and the dashboard.
 - `!skip` / `/skip` and the panel's `music:skip` event now advance the queue
   while single-track loop is enabled. Previously the Idle handler replayed the
   same track and only reported success, so a guild in loop mode could not skip
