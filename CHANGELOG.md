@@ -59,6 +59,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `!shuffle` / `/shuffle` and the panel's shuffle command now keep the
+  currently playing track at the head of the queue and shuffle only the
+  upcoming tracks. Previously the playing track was moved and left in the
+  array, so the next track end shifted an unplayed track (silently skipping it)
+  and replayed the old current track later; queue-loop rotation inherited the
+  same off-by-one.
 - `!skip` / `/skip` and the panel's `music:skip` event now advance the queue
   while single-track loop is enabled. Previously the Idle handler replayed the
   same track and only reported success, so a guild in loop mode could not skip

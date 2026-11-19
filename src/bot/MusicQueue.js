@@ -211,10 +211,25 @@ class MusicQueue {
      * Shuffle the queue
      */
     shuffle() {
+        // The head of `tracks` is the playing track (see getCurrentTrack() and
+        // nextTrack()). Keep it in place so a natural track end does not shift
+        // an unplayed track and replay the current one later.
+        const playingIndex = this.currentTrack ? this.tracks.indexOf(this.currentTrack) : -1;
+        const pool = playingIndex >= 0
+            ? this.tracks.filter((_, index) => index !== playingIndex)
+            : this.tracks.slice();
+
         // Fisher-Yates shuffle
-        for (let i = this.tracks.length - 1; i > 0; i--) {
+        for (let i = pool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [this.tracks[i], this.tracks[j]] = [this.tracks[j], this.tracks[i]];
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+
+        if (playingIndex >= 0) {
+            this.tracks = [this.currentTrack, ...pool];
+            this.currentIndex = 0;
+        } else {
+            this.tracks = pool;
         }
     }
 
