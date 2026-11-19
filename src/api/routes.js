@@ -281,6 +281,14 @@ function setupRoutes(app) {
         if (!username) {
             return res.status(400).json({ success: false, error: 'Username is required' });
         }
+        // Login resolves an account by the first row with this username. A
+        // duplicate would shadow whichever account sorts later, locking that
+        // user out with the correct password, so profile renames must respect
+        // the same uniqueness rule as registration and admin creation.
+        const owner = userOperations.getByUsername(username);
+        if (owner && Number(owner.id) !== Number(req.user.id)) {
+            return res.status(400).json({ success: false, error: 'Username already exists' });
+        }
         userOperations.updateProfile(req.user.id, username, email);
         res.json({ success: true, user: userOperations.getById(req.user.id) });
     });
