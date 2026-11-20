@@ -216,6 +216,53 @@ test('shuffle keeps every track exactly once', () => {
     assert.deepEqual(queue.tracks.map(track => track.title), ['Track 2', 'Track 3', 'Track 4', 'Track 1']);
 });
 
+test('shuffle keeps the currently playing track at the head', () => {
+    const { queue } = makeQueue();
+    const current = makeTrack(1);
+    queue.tracks = [current, makeTrack(2), makeTrack(3), makeTrack(4)];
+    queue.currentTrack = current;
+    queue.currentIndex = 0;
+    queue.isPlaying = true;
+
+    const random = mock.method(Math, 'random', () => 0);
+    try {
+        queue.shuffle();
+    } finally {
+        random.mock.restore();
+    }
+
+    assert.equal(queue.tracks[0], current);
+    assert.equal(queue.tracks.filter(track => track === current).length, 1);
+    assert.deepEqual(
+        queue.tracks.slice(1).map(track => track.title).sort(),
+        ['Track 2', 'Track 3', 'Track 4']
+    );
+    assert.equal(queue.currentIndex, 0);
+});
+
+test('finishing the track after a shuffle skips nothing and repeats nothing', () => {
+    const { queue } = makeQueue();
+    const current = makeTrack(1);
+    queue.tracks = [current, makeTrack(2), makeTrack(3), makeTrack(4)];
+    queue.currentTrack = current;
+    queue.currentIndex = 0;
+    queue.isPlaying = true;
+
+    const random = mock.method(Math, 'random', () => 0);
+    try {
+        queue.shuffle();
+    } finally {
+        random.mock.restore();
+    }
+
+    const upcoming = queue.tracks.slice(1).map(track => track.title);
+    const next = queue.nextTrack();
+
+    assert.equal(next.title, upcoming[0]);
+    assert.equal(queue.tracks.includes(current), false);
+    assert.equal(queue.currentTrack, next);
+});
+
 test('clear resets queue and playback state', () => {
     const { queue } = makeQueue();
     queue.tracks = [makeTrack(1)];
