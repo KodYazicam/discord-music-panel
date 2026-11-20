@@ -22,7 +22,8 @@ class MusicQueue {
         // Playback state
         this.isPlaying = false;
         this.isPaused = false;
-        this.volume = config.volume || 100;
+        // 0 is a valid volume (mute); only null/undefined may use the default.
+        this.volume = config.volume ?? 100;
         this.maxQueueSize = config.maxQueueSize ?? 500;
         this.announceSongs = config.announceSongs;
         this.stayInChannel = config.stayInChannel;

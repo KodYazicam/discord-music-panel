@@ -30,7 +30,7 @@ module.exports = {
 
         if (volume === null) {
             return interaction.reply({
-                embeds: [new EmbedBuilder().setColor(0x5865F2).setDescription(`🔊 Current volume: **${queue?.volume || 100}%**`)]
+                embeds: [new EmbedBuilder().setColor(0x5865F2).setDescription(`🔊 Current volume: **${queue?.volume ?? 100}%**`)]
             });
         }
 
