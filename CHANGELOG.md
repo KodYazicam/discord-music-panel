@@ -65,6 +65,13 @@ All notable changes to this project are documented here. The format follows
   array, so the next track end shifted an unplayed track (silently skipping it)
   and replayed the old current track later; queue-loop rotation inherited the
   same off-by-one.
+- Removing the track that is currently playing no longer skips the next
+  track. `tracks[0]` is the playing track, but `MusicBot.removeTrack()`
+  removed it without moving playback, so the removed audio kept streaming
+  and the following Idle event shifted the next track away. Removing index 0
+  now stops the player and starts the new head; removing the last track ends
+  the queue. Applies to `/remove 1`, `!remove 1`, the dashboard trash button,
+  and `music:remove`.
 - `!skip` / `/skip` and the panel's `music:skip` event now advance the queue
   while single-track loop is enabled. Previously the Idle handler replayed the
   same track and only reported success, so a guild in loop mode could not skip

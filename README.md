@@ -452,7 +452,7 @@ this.loopMode = 'off';      // "off", "track", "queue"
 | Method | Description |
 |--------|-------------|
 | `addTrack(track)` | Add track to queue |
-| `removeTrack(index)` | Remove track by index |
+| `removeTrack(index)` | Remove track by index (0 = now playing; removing it skips to the next track) |
 | `clear()` | Clear entire queue |
 | `shuffle()` | Randomize queue |
 | `getCurrentTrack()` | Get current track |
@@ -959,7 +959,7 @@ Legacy aliases still fire: `bot:update`, `queue:update`, `nowplaying:update`.
 | `/volume <level>` | Set volume | level: 0-200 |
 | `/shuffle` | Shuffle queue | - |
 | `/loop <mode>` | Set loop mode | mode: off/track/queue |
-| `/remove <position>` | Remove from queue | position: Track number |
+| `/remove <position>` | Remove from queue | position: 1 = now playing; removing it skips to the next track |
 | `/clear` | Clear queue | - |
 | `/seek <time>` | Seek position | time: `90`, `1:30`, or `1:30:15` |
 | `/jump <number>` | Jump to track | number: Track number (1-based) |
@@ -981,7 +981,7 @@ With prefix `!` (configurable):
 | `!volume <level>` | `!vol` | Set volume |
 | `!shuffle` | - | Shuffle queue |
 | `!loop <mode>` | - | Set loop mode |
-| `!remove <pos>` | - | Remove from queue |
+| `!remove <pos>` | - | Remove from queue (1 = now playing; removing it skips to the next track) |
 | `!clear` | - | Clear queue |
 | `!search <query>` | - | Search for songs |
 | `!lyrics` | - | Get lyrics |
