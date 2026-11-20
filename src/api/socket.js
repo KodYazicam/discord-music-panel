@@ -96,10 +96,39 @@ function setupSocketHandlers(io, botManager, db) {
      */
     const denyAccess = (callback, access) => respond(callback, { success: false, error: access.error });
 
+    /**
+     * Register a listener that cannot crash the process.
+     *
+     * Socket.IO does not catch listener errors and does not await the promise
+     * an async listener returns. A malformed packet (missing payload, null,
+     * wrong type) would otherwise reach uncaughtException in src/index.js,
+     * which exits the process, or surface as an unhandled rejection.
+     */
+    const listenOn = (socket, event, handler) => {
+        socket.on(event, (...args) => {
+            try {
+                // A JSON null payload is as malformed as a missing one: let the
+                // handler's `= {}` default apply instead of destructuring null.
+                if (args.length > 0 && args[0] === null) args[0] = undefined;
+                const result = handler(...args);
+                if (result && typeof result.then === 'function') {
+                    return result.catch((error) => {
+                        logger.error(`Socket ${event} failed:`, error);
+                    });
+                }
+                return result;
+            } catch (error) {
+                logger.error(`Socket ${event} failed:`, error);
+                return undefined;
+            }
+        });
+    };
+
     io.on('connection', (socket) => {
         logger.info(`Client connected: ${socket.user.username} (${socket.id})`);
 
         socket.join(`user:${socket.user.id}`);
+        const listen = (event, handler) => listenOn(socket, event, handler);
 
         const subscribeBot = (botId) => {
             const access = guard(socket, botId);
@@ -108,20 +137,22 @@ function setupSocketHandlers(io, botManager, db) {
             return true;
         };
 
-        socket.on('bot:subscribe', (botId) => {
+        listen('bot:subscribe', (botId) => {
+            if (!botId) return;
             subscribeBot(botId);
         });
-        socket.on('join:bot', ({ botId } = {}) => {
+        listen('join:bot', ({ botId } = {}) => {
             if (botId) subscribeBot(botId);
         });
-        socket.on('leave:bot', ({ botId } = {}) => {
+        listen('leave:bot', ({ botId } = {}) => {
             if (botId) socket.leave(`bot:${botId}`);
         });
 
         /**
          * Unsubscribe from bot updates
          */
-        socket.on('bot:unsubscribe', (botId) => {
+        listen('bot:unsubscribe', (botId) => {
+            if (!botId) return;
             socket.leave(`bot:${botId}`);
             logger.debug(`${socket.user.username} unsubscribed from bot ${botId}`);
         });
@@ -129,7 +160,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Start a bot
          */
-        socket.on('bot:start', async (botId, callback) => {
+        listen('bot:start', async (botId, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return respond(callback, { success: false, error: access.error });
@@ -143,7 +174,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Stop a bot
          */
-        socket.on('bot:stop', async (botId, callback) => {
+        listen('bot:stop', async (botId, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return respond(callback, { success: false, error: access.error });
@@ -157,7 +188,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Restart a bot
          */
-        socket.on('bot:restart', async (botId, callback) => {
+        listen('bot:restart', async (botId, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return respond(callback, { success: false, error: access.error });
@@ -171,7 +202,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Get bot status
          */
-        socket.on('bot:status', (botId, callback) => {
+        listen('bot:status', (botId, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -185,7 +216,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Get all bots
          */
-        socket.on('bots:list', (callback) => {
+        listen('bots:list', (callback) => {
             try {
                 if (!refreshSocketUser(socket)) {
                     endSession(socket);
@@ -207,31 +238,33 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Subscribe to guild updates
          */
-        socket.on('guild:subscribe', ({ botId, guildId }) => {
+        listen('guild:subscribe', ({ botId, guildId } = {}) => {
+            if (!botId || !guildId) return;
             const access = guard(socket, botId);
             if (access.error) return;
             socket.join(`guild:${botId}:${guildId}`);
         });
-        socket.on('join:music', ({ botId, guildId } = {}) => {
+        listen('join:music', ({ botId, guildId } = {}) => {
             const access = guard(socket, botId);
             if (access.error || !guildId) return;
             socket.join(`guild:${botId}:${guildId}`);
         });
-        socket.on('leave:music', ({ botId, guildId } = {}) => {
+        listen('leave:music', ({ botId, guildId } = {}) => {
             if (botId && guildId) socket.leave(`guild:${botId}:${guildId}`);
         });
 
         /**
          * Unsubscribe from guild updates
          */
-        socket.on('guild:unsubscribe', ({ botId, guildId }) => {
+        listen('guild:unsubscribe', ({ botId, guildId } = {}) => {
+            if (!botId || !guildId) return;
             socket.leave(`guild:${botId}:${guildId}`);
         });
 
         /**
          * Get guild list for a bot
          */
-        socket.on('guilds:list', (botId, callback) => {
+        listen('guilds:list', (botId, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -247,7 +280,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Get queue for a guild
          */
-        socket.on('queue:get', ({ botId, guildId } = {}, callback) => {
+        listen('queue:get', ({ botId, guildId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -263,7 +296,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Play a song
          */
-        socket.on('music:play', async ({ botId, guildId, query, voiceChannelId, textChannelId }, callback) => {
+        listen('music:play', async ({ botId, guildId, query, voiceChannelId, textChannelId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return respond(callback, { success: false, error: access.error });
@@ -281,7 +314,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Pause playback
          */
-        socket.on('music:pause', async ({ botId, guildId }, callback) => {
+        listen('music:pause', async ({ botId, guildId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -295,7 +328,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Resume playback
          */
-        socket.on('music:resume', async ({ botId, guildId }, callback) => {
+        listen('music:resume', async ({ botId, guildId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -309,7 +342,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Skip current track
          */
-        socket.on('music:skip', async ({ botId, guildId }, callback) => {
+        listen('music:skip', async ({ botId, guildId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -323,7 +356,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Stop playback
          */
-        socket.on('music:stop', async ({ botId, guildId }, callback) => {
+        listen('music:stop', async ({ botId, guildId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -337,7 +370,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Set volume
          */
-        socket.on('music:volume', async ({ botId, guildId, volume }, callback) => {
+        listen('music:volume', async ({ botId, guildId, volume } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -351,7 +384,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Shuffle queue
          */
-        socket.on('music:shuffle', async ({ botId, guildId }, callback) => {
+        listen('music:shuffle', async ({ botId, guildId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -365,7 +398,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Set loop mode
          */
-        socket.on('music:loop', async ({ botId, guildId, mode }, callback) => {
+        listen('music:loop', async ({ botId, guildId, mode } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -379,7 +412,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Remove track from queue
          */
-        socket.on('music:remove', async ({ botId, guildId, index }, callback) => {
+        listen('music:remove', async ({ botId, guildId, index } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -393,7 +426,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Clear queue
          */
-        socket.on('music:clear', async ({ botId, guildId }, callback) => {
+        listen('music:clear', async ({ botId, guildId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -407,7 +440,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Move track in queue
          */
-        socket.on('music:move', async ({ botId, guildId, from, to }, callback) => {
+        listen('music:move', async ({ botId, guildId, from, to } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -421,7 +454,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Jump to track
          */
-        socket.on('music:jump', async ({ botId, guildId, index }, callback) => {
+        listen('music:jump', async ({ botId, guildId, index } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -435,7 +468,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Leave voice channel
          */
-        socket.on('music:leave', async ({ botId, guildId }, callback) => {
+        listen('music:leave', async ({ botId, guildId } = {}, callback) => {
             try {
                 const access = guard(socket, botId);
                 if (access.error) return denyAccess(callback, access);
@@ -451,7 +484,7 @@ function setupSocketHandlers(io, botManager, db) {
         /**
          * Get global stats
          */
-        socket.on('stats:global', (callback) => {
+        listen('stats:global', (callback) => {
             try {
                 const stats = botManager.getGlobalStats();
                 respond(callback, { success: true, stats });
@@ -462,11 +495,11 @@ function setupSocketHandlers(io, botManager, db) {
 
         // ==================== Disconnect ====================
 
-        socket.on('disconnect', (reason) => {
+        listen('disconnect', (reason) => {
             logger.info(`Client disconnected: ${socket.user.username} (${reason})`);
         });
 
-        socket.on('error', (error) => {
+        listen('error', (error) => {
             logger.error(`Socket error for ${socket.user.username}:`, error);
         });
     });
