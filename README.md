@@ -316,7 +316,7 @@ REST API endpoints.
 | GET | `/api/bots/:id/guilds` | Get bot's servers |
 | GET | `/api/bots/:id/guilds/:guildId/queue` | Get queue |
 | POST | `/api/bots/:id/guilds/:guildId/command` | Run play/pause/skip/… (`{ command, args }`) |
-| PATCH | `/api/auth/profile` | Update username/email |
+| PATCH | `/api/auth/profile` | Update username/email (username must be unique) |
 | POST | `/api/auth/password` | Change password |
 
 **Adding a new endpoint:**
