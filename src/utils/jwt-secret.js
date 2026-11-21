@@ -73,8 +73,40 @@ function getJwtSecret(env = process.env) {
     return generatedSecret;
 }
 
+/**
+ * Validate the secrets needed to start in production.
+ *
+ * JWT_SECRET is validated by getJwtSecret(). When TOKEN_ENCRYPTION_KEY is
+ * configured it overrides JWT_SECRET for encrypting bot tokens at rest, so it
+ * must meet the same bar instead of silently accepting the placeholder value
+ * published in .env.example and in the README.
+ */
+function validateProductionSecrets(env = process.env) {
+    if (env.NODE_ENV !== 'production') return;
+
+    getJwtSecret(env);
+
+    const configured = env.TOKEN_ENCRYPTION_KEY;
+    if (configured === undefined || configured === null || String(configured).trim() === '') {
+        return;
+    }
+
+    if (isPlaceholderSecret(configured)) {
+        throw new Error(
+            `Set a real TOKEN_ENCRYPTION_KEY before starting in production. Refused placeholders: ${PLACEHOLDER_SECRETS.join(', ')}`
+        );
+    }
+
+    if (isWeakSecret(configured)) {
+        throw new Error(
+            `TOKEN_ENCRYPTION_KEY is too short: use at least ${MIN_SECRET_LENGTH} characters. Bot tokens would be encrypted with a brute-forceable key.`
+        );
+    }
+}
+
 module.exports = {
     getJwtSecret,
+    validateProductionSecrets,
     isPlaceholderSecret,
     isWeakSecret,
     MIN_SECRET_LENGTH,

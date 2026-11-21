@@ -110,6 +110,16 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- Production startup now refuses a placeholder or short `TOKEN_ENCRYPTION_KEY`
+  before initializing the database. A deployment that copied the documented
+  `.env` example kept storing Discord bot tokens under the public
+  `change-this-token-encryption-key` value while only `JWT_SECRET` was checked,
+  so the ciphertext could be decrypted by anyone with the repository. The
+  configured key must now be non-placeholder and at least 32 characters, the
+  same bar as `JWT_SECRET`; when it is unset the validated `JWT_SECRET` is still
+  used. `tests/token-encryption-key.test.js` covers the rejection and a real
+  startup exit.
+
 - REST `authMiddleware` and the Socket.IO handshake now re-read the session user
   through `resolveSessionUser` (`src/utils/access.js`) instead of trusting the
   JWT claims. Deleting or demoting an account therefore takes effect

@@ -153,7 +153,7 @@ Install **ffmpeg** and **yt-dlp** on the host (`pipx install yt-dlp`). Voice enc
 | `DATABASE_PATH` | SQLite database file location | `./data/database.sqlite` | No |
 | `FRONTEND_URL` | Frontend URL for CORS (used if `CORS_ORIGINS` is unset) | `http://localhost:3000` | No |
 | `CORS_ORIGINS` | Comma-separated allowed origins | `FRONTEND_URL` | No |
-| `TOKEN_ENCRYPTION_KEY` | AES-256 material for Discord bot tokens at rest | falls back to `JWT_SECRET` | **Yes** in production |
+| `TOKEN_ENCRYPTION_KEY` | AES-256 material for Discord bot tokens at rest. Production refuses the documented placeholder or a value shorter than 32 characters | falls back to `JWT_SECRET` | **Yes** in production |
 | `RATE_LIMIT_WINDOW_MS` | Auth rate-limit window | `900000` | No |
 | `RATE_LIMIT_MAX_REQUESTS` | Auth rate-limit max | `100` (auth routes cap at 30) | No |
 | `YTDLP_PATH` | yt-dlp binary | `yt-dlp` | No |
