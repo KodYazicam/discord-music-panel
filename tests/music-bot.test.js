@@ -1,5 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { PassThrough } = require('node:stream');
+const { createAudioResource, StreamType } = require('@discordjs/voice');
 
 // Replace the database module before MusicBot is loaded so these tests never
 // touch SQLite, Better-SQLite3, or the on-disk database.
@@ -695,4 +697,50 @@ test('removing an upcoming track leaves the playing track untouched', async (t) 
     assert.deepEqual(queue.tracks, [first, third]);
     assert.equal(queue.currentTrack, first);
     assert.equal(player.calls.stop, 0);
+});
+
+test('a player error followed by idle advances the queue only once', async (t) => {
+    const { bot, guildId, attachQueue, attachConnection } = createHarness(t);
+    const first = makeTrack(1);
+    const second = makeTrack(2);
+    const third = makeTrack(3);
+    const queue = attachQueue([first, second, third]);
+    attachConnection();
+
+    const streams = [];
+    queue.createResource = async () => {
+        const stream = new PassThrough();
+        streams.push(stream);
+        return createAudioResource(stream, { inputType: StreamType.Raw });
+    };
+
+    await bot.startPlayback(guildId);
+    assert.equal(queue.currentTrack, first);
+
+    // A failed resource emits 'error' and then transitions the player to Idle.
+    // Count the resumptions so a double advance cannot hide behind timing.
+    let resumes = 0;
+    const resume = bot.startPlayback.bind(bot);
+    bot.startPlayback = (...args) => {
+        resumes++;
+        return resume(...args);
+    };
+
+    t.after(() => {
+        const player = bot.players.get(guildId);
+        if (player) {
+            // Detach first: stop() transitions to Idle and would start the
+            // next track, keeping the process alive after the test.
+            player.removeAllListeners();
+            player.stop(true);
+        }
+        for (const stream of streams) stream.destroy();
+    });
+
+    streams[0].emit('error', new Error('simulated stream failure'));
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    assert.equal(resumes, 1, 'one failed track must advance exactly once');
+    assert.equal(queue.currentTrack, second);
+    assert.deepEqual(queue.tracks, [second, third]);
 });
