@@ -490,6 +490,27 @@ test('executeCommand routes known commands and rejects unknown ones', async (t) 
     assert.equal(unknown.message, 'Unknown command');
 });
 
+test('moveTrack rejects moving the playing track with a clear message', (t) => {
+    const { bot, guildId, attachQueue } = createHarness(t);
+    const current = makeTrack(1);
+    const queue = attachQueue([current, makeTrack(2), makeTrack(3)]);
+    queue.currentTrack = current;
+    queue.currentIndex = 0;
+    queue.isPlaying = true;
+
+    assert.deepEqual(bot.moveTrack(guildId, 0, 2), {
+        success: false,
+        message: 'Cannot move the currently playing track'
+    });
+    assert.deepEqual(bot.moveTrack(guildId, 1, 0), {
+        success: false,
+        message: 'Cannot move the currently playing track'
+    });
+
+    assert.equal(bot.moveTrack(guildId, 1, 2).success, true);
+    assert.deepEqual(queue.tracks.map(track => track.title), ['Track 1', 'Track 3', 'Track 2']);
+});
+
 test('getQueue returns a detached snapshot of playback state', (t) => {
     const { bot, guildId, attachQueue } = createHarness(t);
     const track = makeTrack(1);

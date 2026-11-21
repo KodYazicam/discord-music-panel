@@ -195,10 +195,24 @@ class MusicQueue {
     }
 
     /**
+     * True when the head of `tracks` is the track currently being played.
+     * nextTrack() always shifts that head, so it must not be reordered.
+     */
+    isCurrentTrackAtHead() {
+        return this.currentTrack !== null && this.tracks[0] === this.currentTrack;
+    }
+
+    /**
      * Move track from one position to another
      */
     moveTrack(from, to) {
         if (from < 0 || from >= this.tracks.length || to < 0 || to >= this.tracks.length) {
+            return false;
+        }
+
+        // Moving the playing track, or inserting an unplayed track ahead of
+        // it, would make nextTrack() skip a track and replay the current one.
+        if (this.isCurrentTrackAtHead() && (from === 0 || to === 0)) {
             return false;
         }
         

@@ -59,6 +59,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Moving a queue track no longer skips a track or replays the current one.
+  `tracks[0]` is the playing track, but `MusicQueue.moveTrack()` allowed that
+  track to move or an unplayed track to be inserted ahead of it, so the next
+  track end shifted the wrong entry. Moves that target the playing slot are now
+  rejected with a clear message; `!move`, `/move`, and `music:move` still
+  reorder the upcoming tracks.
 - `!shuffle` / `/shuffle` and the panel's shuffle command now keep the
   currently playing track at the head of the queue and shuffle only the
   upcoming tracks. Previously the playing track was moved and left in the
