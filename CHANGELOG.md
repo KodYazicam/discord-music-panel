@@ -59,6 +59,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- A failed track now advances the queue exactly once. `@discordjs/voice`
+  emits `error` and then transitions the player to Idle for the same resource,
+  and both listeners called `handleTrackEnd()`, so one stream failure skipped
+  the following track and started two overlapping `startPlayback()` runs. The
+  error listener now only logs the failure; the Idle transition performs the
+  single advance.
 - `!shuffle` / `/shuffle` and the panel's shuffle command now keep the
   currently playing track at the head of the queue and shuffle only the
   upcoming tracks. Previously the playing track was moved and left in the

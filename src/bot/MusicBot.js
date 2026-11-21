@@ -696,6 +696,24 @@ class MusicBot {
     }
 
     /**
+     * Attach playback completion listeners to an audio player.
+     *
+     * A failed resource makes @discordjs/voice emit 'error' and then transition
+     * the player to Idle. Advancing the queue from both listeners would consume
+     * two tracks for one failure, so the error is only logged and the Idle
+     * transition performs the single advance.
+     */
+    attachPlayerListeners(player, guildId, textChannel) {
+        player.on(AudioPlayerStatus.Idle, () => {
+            this.handleTrackEnd(guildId, textChannel);
+        });
+
+        player.on('error', (error) => {
+            this.logger.error('Audio player error:', error);
+        });
+    }
+
+    /**
      * Start playback
      */
     async startPlayback(guildId, textChannel = null) {
@@ -711,16 +729,7 @@ class MusicBot {
             player = createAudioPlayer();
             this.players.set(guildId, player);
             connection.subscribe(player);
-
-            // Handle player state changes
-            player.on(AudioPlayerStatus.Idle, () => {
-                this.handleTrackEnd(guildId, textChannel);
-            });
-
-            player.on('error', (error) => {
-                this.logger.error('Audio player error:', error);
-                this.handleTrackEnd(guildId, textChannel);
-            });
+            this.attachPlayerListeners(player, guildId, textChannel);
         }
 
         // Get next track
