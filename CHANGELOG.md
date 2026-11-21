@@ -90,6 +90,11 @@ All notable changes to this project are documented here. The format follows
 - The dashboard and statistics pages read real, caller-scoped numbers from
   `GET /api/stats/overview` and `/stats/recent-activity`; no invented sample
   data, trend percentages, or fixed chart.
+- `GET /api/stats` and the `stats:global` Socket.IO event no longer return every
+  operator's aggregate. Both now use `collectScopedStats()`
+  (`src/api/scoped-stats.js`) over the bots the caller can read, so a normal
+  account only sees its own bot count, guilds, playtime and command totals;
+  admins still see the global aggregate.
 - The dashboard shell now declares `lang="en"` and an English meta description
   instead of Turkish, matching the English UI and fixing screen-reader and
   browser-translation heuristics.

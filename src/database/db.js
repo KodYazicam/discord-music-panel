@@ -410,10 +410,11 @@ const statisticsOperations = {
     // manage, so one operator's totals never include another operator's bots.
     getTotalsForBots: (botIds) => {
         if (!Array.isArray(botIds) || botIds.length === 0) {
-            return { total_songs: 0, total_playtime: 0, total_commands: 0 };
+            return { total_bots: 0, total_songs: 0, total_playtime: 0, total_commands: 0 };
         }
         return db.prepare(`
-            SELECT COALESCE(SUM(songs_played), 0) as total_songs,
+            SELECT COUNT(DISTINCT bot_id) as total_bots,
+                   COALESCE(SUM(songs_played), 0) as total_songs,
                    COALESCE(SUM(total_playtime), 0) as total_playtime,
                    COALESCE(SUM(commands_used), 0) as total_commands
             FROM statistics WHERE bot_id IN (${placeholdersFor(botIds)})
