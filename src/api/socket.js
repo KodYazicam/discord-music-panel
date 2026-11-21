@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { Logger } = require('../utils/Logger');
 const { isAdmin, requireBotAccess, resolveSessionUser } = require('../utils/access');
 const { getJwtSecret } = require('../utils/jwt-secret');
+const { collectScopedStats } = require('./scoped-stats');
 
 const logger = new Logger('Socket');
 
@@ -76,6 +77,14 @@ function setupSocketHandlers(io, botManager, db) {
         }
         const fakeReq = { user: socket.user };
         return requireBotAccess(fakeReq, botId);
+    };
+
+    // Bots the caller may read: admins see every bot, other users only their own.
+    const visibleBots = (socket) => {
+        const allBots = botManager.getAllBots();
+        if (isAdmin(socket.user)) return allBots;
+        return allBots.filter((bot) => Number(bot.createdBy) === Number(socket.user.id)
+            || Number(bot.created_by) === Number(socket.user.id));
     };
 
     /**
@@ -222,11 +231,7 @@ function setupSocketHandlers(io, botManager, db) {
                     endSession(socket);
                     return respond(callback, { success: false, error: SESSION_INVALID });
                 }
-                let bots = botManager.getAllBots();
-                if (!isAdmin(socket.user)) {
-                    bots = bots.filter((bot) => Number(bot.createdBy) === Number(socket.user.id)
-                        || Number(bot.created_by) === Number(socket.user.id));
-                }
+                const bots = visibleBots(socket);
                 respond(callback, { success: true, bots });
             } catch (error) {
                 respond(callback, { success: false, error: error.message });
@@ -482,12 +487,18 @@ function setupSocketHandlers(io, botManager, db) {
         // ==================== Stats Events ====================
 
         /**
-         * Get global stats
+         * Get the caller's statistics
+         *
+         * Scoped like bots:list: admins see every bot, other users only the
+         * bots they created. The legacy unscoped aggregate is gone.
          */
         listen('stats:global', (callback) => {
             try {
-                const stats = botManager.getGlobalStats();
-                respond(callback, { success: true, stats });
+                if (!refreshSocketUser(socket)) {
+                    endSession(socket);
+                    return respond(callback, { success: false, error: SESSION_INVALID });
+                }
+                respond(callback, { success: true, stats: collectScopedStats(visibleBots(socket)) });
             } catch (error) {
                 respond(callback, { success: false, error: error.message });
             }

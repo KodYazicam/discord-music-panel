@@ -24,6 +24,7 @@ const { normalizePresets, PresetValidationError } = require('../utils/presets');
 const { getJwtSecret } = require('../utils/jwt-secret');
 const { checkYtDlpHealth } = require('../bot/ytdlp');
 const { metricsEnabled, requestMetricsMiddleware, createMetricsAuth, renderMetrics } = require('./metrics');
+const { collectScopedStats } = require('./scoped-stats');
 
 const logger = new Logger('API');
 
@@ -663,21 +664,15 @@ function setupRoutes(app) {
     // ==================== Statistics Routes ====================
 
     /**
-     * GET /api/stats - Get global statistics
+     * GET /api/stats - Get the caller's statistics
+     *
+     * Kept for older clients. The payload is scoped exactly like
+     * /stats/overview: admins see every bot, other users only their own.
      */
     router.get('/stats', authMiddleware, (req, res) => {
         try {
-            const botManager = req.app.get('botManager');
-            const stats = botManager.getGlobalStats();
-            const dbStats = statisticsOperations.getGlobalStats();
-            
-            res.json({
-                success: true,
-                stats: {
-                    ...stats,
-                    ...dbStats
-                }
-            });
+            const stats = collectScopedStats(scopedBotList(req));
+            res.json({ success: true, stats });
         } catch (error) {
             logger.error('Error getting stats:', error);
             res.status(500).json({ success: false, error: error.message });

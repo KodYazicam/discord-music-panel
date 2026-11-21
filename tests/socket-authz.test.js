@@ -24,6 +24,19 @@ require.cache[dbModulePath] = {
         },
         botOperations: {
             getById: (id) => bots.get(Number(id)) || null
+        },
+        statisticsOperations: {
+            getTotalsForBots: (botIds) => {
+                const totals = { 1: [21, 3600, 7], 2: [999, 99999, 100] };
+                return botIds.reduce((acc, id) => {
+                    const [songs, playtime, commands] = totals[Number(id)] || [0, 0, 0];
+                    acc.total_bots += 1;
+                    acc.total_songs += songs;
+                    acc.total_playtime += playtime;
+                    acc.total_commands += commands;
+                    return acc;
+                }, { total_bots: 0, total_songs: 0, total_playtime: 0, total_commands: 0 });
+            }
         }
     }
 };
@@ -43,8 +56,8 @@ function createBotManager() {
         calls,
         bots,
         getAllBots: () => [
-            { id: 1, name: 'alice-bot', createdBy: 1, created_by: 1 },
-            { id: 2, name: 'bob-bot', createdBy: 2, created_by: 2 }
+            { id: 1, name: 'alice-bot', createdBy: 1, created_by: 1, status: 'online', guildCount: 2, playingCount: 1, totalQueuedSongs: 3, totalUsers: 10 },
+            { id: 2, name: 'bob-bot', createdBy: 2, created_by: 2, status: 'offline' }
         ],
         getBot: (botId) => {
             calls.getBot += 1;
@@ -220,6 +233,28 @@ test('bots:list returns only the caller\'s bots unless the caller is an admin', 
     const adminSocket = connect(admin, createBotManager());
     const adminList = await adminSocket.emit('bots:list');
     assert.deepEqual(adminList.bots.map((bot) => bot.name), ['alice-bot', 'bob-bot']);
+});
+
+test('stats:global aggregates only the bots the caller can manage', async () => {
+    const bobStats = await connect(bob, createBotManager()).emit('stats:global');
+    assert.equal(bobStats.success, true);
+    assert.deepEqual(
+        [bobStats.stats.totalBots, bobStats.stats.total_bots, bobStats.stats.total_songs, bobStats.stats.runningBots],
+        [1, 1, 999, 0]
+    );
+
+    const aliceStats = await connect(alice, createBotManager()).emit('stats:global');
+    assert.deepEqual(
+        [aliceStats.stats.totalBots, aliceStats.stats.total_bots, aliceStats.stats.total_songs, aliceStats.stats.runningBots],
+        [1, 1, 21, 1]
+    );
+    assert.equal(aliceStats.stats.totalGuilds, 2);
+
+    const adminStats = await connect(admin, createBotManager()).emit('stats:global');
+    assert.deepEqual(
+        [adminStats.stats.totalBots, adminStats.stats.total_bots, adminStats.stats.total_songs],
+        [2, 2, 1020]
+    );
 });
 
 test('callback-taking handlers tolerate a client that omits the acknowledgement callback', async () => {

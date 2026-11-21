@@ -32,13 +32,15 @@ require.cache[dbModulePath] = {
             getRecentForBots: (botIds, limit = 10) => logs.filter((row) => ids(botIds).includes(row.bot_id)).slice(0, limit)
         },
         statisticsOperations: {
+            getGlobalStats: () => ({ total_bots: 2, total_songs: 1020, total_playtime: 103599, total_commands: 107 }),
             getTotalsForBots: (botIds) => ids(botIds).reduce((acc, id) => {
                 const [songs, playtime, commands] = totals[Number(id)] || [0, 0, 0];
+                acc.total_bots += 1;
                 acc.total_songs += songs;
                 acc.total_playtime += playtime;
                 acc.total_commands += commands;
                 return acc;
-            }, { total_songs: 0, total_playtime: 0, total_commands: 0 }),
+            }, { total_bots: 0, total_songs: 0, total_playtime: 0, total_commands: 0 }),
             getDailySeriesForBots: (botIds) => ids(botIds).length ? [
                 { date: '2026-11-17', songs_played: 4, total_playtime: 600, commands_used: 2 },
                 { date: '2026-11-18', songs_played: 6, total_playtime: 900, commands_used: 3 }
@@ -87,4 +89,29 @@ test('GET /api/stats/recent-activity keeps command logs inside the caller scope'
     assert.equal(body.activities.length, 1);
     assert.equal(body.activities[0].message, 'play in Alice Guild');
     assert.match(body.activities[0].time, /^2026-11-18T09:00:00/);
+});
+
+test('GET /api/stats scopes the legacy aggregate to the caller\'s bots', async () => {
+    const bob = await (await get('/stats', { id: 2, username: 'bob', role: 'user' })).json();
+    assert.deepEqual(
+        [bob.stats.totalBots, bob.stats.total_bots, bob.stats.total_songs, bob.stats.total_playtime, bob.stats.total_commands],
+        [1, 1, 999, 99999, 100]
+    );
+    assert.equal(bob.stats.runningBots, 0);
+
+    const alice = await (await get('/stats', { id: 1, username: 'alice', role: 'user' })).json();
+    assert.deepEqual(
+        [alice.stats.totalBots, alice.stats.total_bots, alice.stats.total_songs, alice.stats.total_playtime, alice.stats.total_commands],
+        [1, 1, 21, 3600, 7]
+    );
+    assert.equal(alice.stats.runningBots, 1);
+});
+
+test('GET /api/stats still returns the global aggregate to admins', async () => {
+    const body = await (await get('/stats', { id: 9, username: 'root', role: 'admin' })).json();
+    assert.deepEqual(
+        [body.stats.totalBots, body.stats.total_bots, body.stats.total_songs, body.stats.total_playtime, body.stats.total_commands],
+        [2, 2, 1020, 103599, 107]
+    );
+    assert.equal(body.stats.runningBots, 1);
 });
