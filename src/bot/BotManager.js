@@ -6,6 +6,7 @@
 const { MusicBot } = require('./MusicBot');
 const { Logger } = require('../utils/Logger');
 const { botOperations } = require('../database/db');
+const { normalizeCommandSettings } = require('./command-permissions');
 const { v4: uuidv4 } = require('uuid');
 
 const logger = new Logger('BotManager');
@@ -70,6 +71,17 @@ class BotManager {
 
         try {
             logger.info(`Starting bot: ${config.name} (${botId})`);
+
+            const extra = parseExtraSettings(config.extra_settings);
+            const commandSettings = normalizeCommandSettings({
+                djEnabled: extra.djEnabled,
+                djRoleId: config.dj_role_id || extra.djRoleId,
+                djOnlyCommands: extra.djOnlyCommands,
+                allowedChannels: extra.allowedChannels,
+                blockedChannels: extra.blockedChannels,
+                allowedRoles: extra.allowedRoles,
+                blockedUsers: extra.blockedUsers
+            });
             
             // Create new MusicBot instance
             const musicBot = new MusicBot({
@@ -86,7 +98,7 @@ class BotManager {
                 announceSongs: config.announce_songs === 1,
                 deleteBotMessages: config.delete_bot_messages === 1,
                 stayInChannel: config.stay_in_channel === 1,
-                djRoleId: config.dj_role_id
+                ...commandSettings
             }, this.db, this.io);
 
             // Start the bot

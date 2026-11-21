@@ -22,11 +22,12 @@ const {
 const { Logger } = require('../utils/Logger');
 const { MusicQueue } = require('./MusicQueue');
 const { loadCommands, loadSlashCommands } = require('./commands');
+const { COMMAND_SETTING_KEYS, normalizeCommandSettings, canUseCommand } = require('./command-permissions');
 const { guildOperations, statisticsOperations, logOperations } = require('../database/db');
 
 class MusicBot {
     constructor(config, db, io) {
-        this.config = config;
+        this.config = { ...config, ...normalizeCommandSettings(config) };
         this.db = db;
         this.io = io;
         this.logger = new Logger(`Bot:${config.name}`);
@@ -125,6 +126,17 @@ class MusicBot {
 
             if (!command) return;
 
+            const permission = canUseCommand({
+                member: message.member,
+                guild: message.guild,
+                channelId: message.channelId || message.channel?.id,
+                commandName: command.name || commandName,
+                settings: this.config
+            });
+            if (!permission.allowed) {
+                return message.reply(permission.message);
+            }
+
             // Check cooldown
             if (this.isOnCooldown(message.author.id, commandName)) {
                 const remaining = this.getCooldownRemaining(message.author.id, commandName);
@@ -161,6 +173,17 @@ class MusicBot {
 
             const command = this.slashCommands.get(interaction.commandName);
             if (!command) return;
+
+            const permission = canUseCommand({
+                member: interaction.member,
+                guild: interaction.guild,
+                channelId: interaction.channelId || interaction.channel?.id,
+                commandName: interaction.commandName,
+                settings: this.config
+            });
+            if (!permission.allowed) {
+                return interaction.reply({ content: permission.message, ephemeral: true });
+            }
 
             // Check cooldown
             if (this.isOnCooldown(interaction.user.id, interaction.commandName)) {
@@ -376,6 +399,21 @@ class MusicBot {
      */
     updateConfig(updates) {
         Object.assign(this.config, updates);
+
+        const commandPatch = {};
+        if (updates && updates.settings && typeof updates.settings === 'object') {
+            for (const key of COMMAND_SETTING_KEYS) {
+                if (key in updates.settings) commandPatch[key] = updates.settings[key];
+            }
+        }
+        if (updates && typeof updates === 'object') {
+            for (const key of COMMAND_SETTING_KEYS) {
+                if (key in updates) commandPatch[key] = updates[key];
+            }
+        }
+        if (Object.keys(commandPatch).length > 0) {
+            Object.assign(this.config, normalizeCommandSettings({ ...this.config, ...commandPatch }));
+        }
         
         if (updates.activityType || updates.activityText) {
             this.updateActivity();
