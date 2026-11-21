@@ -202,6 +202,28 @@ test('moveTrack reorders valid indices and rejects invalid ones', () => {
     assert.equal(queue.moveTrack(0, 9), false);
 });
 
+test('moveTrack keeps the playing track pinned at the head', () => {
+    const { queue } = makeQueue();
+    const current = makeTrack(1);
+    queue.tracks = [current, makeTrack(2), makeTrack(3)];
+    queue.currentTrack = current;
+    queue.currentIndex = 0;
+    queue.isPlaying = true;
+
+    // The playing track cannot move, and no unplayed track can be inserted
+    // ahead of it: nextTrack() always shifts tracks[0].
+    assert.equal(queue.moveTrack(0, 2), false);
+    assert.equal(queue.moveTrack(1, 0), false);
+    assert.deepEqual(queue.tracks.map(track => track.title), ['Track 1', 'Track 2', 'Track 3']);
+
+    // Moving an unplayed track still works and playback continues in order.
+    assert.equal(queue.moveTrack(1, 2), true);
+    assert.deepEqual(queue.tracks.map(track => track.title), ['Track 1', 'Track 3', 'Track 2']);
+
+    assert.equal(queue.nextTrack().title, 'Track 3');
+    assert.deepEqual(queue.tracks.map(track => track.title), ['Track 3', 'Track 2']);
+});
+
 test('shuffle keeps every track exactly once', () => {
     const { queue } = makeQueue();
     queue.tracks = [makeTrack(1), makeTrack(2), makeTrack(3), makeTrack(4)];

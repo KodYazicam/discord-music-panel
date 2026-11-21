@@ -1064,7 +1064,11 @@ class MusicBot {
         const success = queue.moveTrack(from, to);
         
         if (!success) {
-            return { success: false, message: 'Invalid indices' };
+            const pinned = queue.isCurrentTrackAtHead() && (from === 0 || to === 0);
+            return {
+                success: false,
+                message: pinned ? 'Cannot move the currently playing track' : 'Invalid indices'
+            };
         }
 
         this.emitToGuild(guildId, ['queue:update', 'music:queueUpdate'], {
