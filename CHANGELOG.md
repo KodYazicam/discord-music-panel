@@ -110,6 +110,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Security
 
+- DJ Mode and the bot-level channel/role/user restrictions are now enforced on
+  both command paths through `src/bot/command-permissions.js`. A member without
+  the DJ role (or outside the restriction lists) is refused without executing
+  the command; administrators and the guild owner stay exempt from DJ Mode, and
+  saved changes apply without a restart. Previously the dashboard stored these
+  values but no command code read them, so `!skip` / `/stop` worked for every
+  member.
 - REST `authMiddleware` and the Socket.IO handshake now re-read the session user
   through `resolveSessionUser` (`src/utils/access.js`) instead of trusting the
   JWT claims. Deleting or demoting an account therefore takes effect

@@ -991,6 +991,20 @@ With prefix `!` (configurable):
 | `!move <from> <to>` | - | Move track |
 | `!help` | - | Show commands |
 
+### Command permissions (DJ Mode and restrictions)
+
+The Bot Settings page stores DJ Mode and channel/role/user restrictions with
+each bot. Both the prefix and slash command paths enforce them before a command
+runs, and a running bot picks up saved changes without a restart.
+
+- **DJ Mode**: when enabled, the commands listed in `djOnlyCommands` require
+  the configured DJ role. Administrators and the guild owner are exempt. If DJ
+  Mode is enabled without a DJ role, only administrators and the guild owner
+  can run those commands.
+- **Restrictions**: `blockedUsers` and `blockedChannels` always deny;
+  `allowedChannels` and `allowedRoles` deny anyone outside the list. A denied
+  command gets a short reply and is not counted in statistics.
+
 ---
 
 ## 🗄️ Database Schema
