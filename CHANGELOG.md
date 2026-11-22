@@ -107,6 +107,10 @@ All notable changes to this project are documented here. The format follows
   in `frontend/src/components/BrandIcons.jsx` with the same geometry, and
   `npm run icons:check` in the frontend CI job reports any icon name that the
   installed `lucide-react` does not export.
+- `/queue` no longer fails when a page of long track titles exceeds Discord's
+  1024-character embed field limit. Entries keep their links and shrink their
+  titles; a page that still cannot fit ends with a visible "and N more tracks"
+  marker, and a single oversized entry is truncated as plain text.
 
 ### Security
 

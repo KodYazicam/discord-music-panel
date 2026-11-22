@@ -331,3 +331,33 @@ test('createQueueEmbed reports loop mode and volume', () => {
     assert.equal(fields['Loop'], '🔁 Looping Queue');
     assert.equal(fields['Volume'], '80%');
 });
+
+test('createQueueEmbed keeps a page of long titles within the 1024-character field limit', () => {
+    const { queue } = makeQueue();
+    queue.tracks = Array.from({ length: 10 }, (_, index) => makeTrack(index + 1, {
+        title: `A very long YouTube video title that takes up a lot of space ${index}`,
+        url: 'https://www.youtube.com/watch?v=abcdefghijk',
+        durationFormatted: '3:20'
+    }));
+
+    const embed = queue.createQueueEmbed(1, 10).toJSON();
+    const field = embed.fields.find(entry => entry.name.startsWith('Queue ('));
+
+    assert.ok(field.value.length <= 1024, `queue field is ${field.value.length} characters`);
+    assert.match(field.value, /…and \d+ more tracks? on this page/);
+    assert.match(field.value, /\*\*1\.\*\* \[A very long YouTube video title/);
+});
+
+test('createQueueEmbed truncates a single entry that cannot fit the field limit', () => {
+    const { queue } = makeQueue();
+    queue.tracks = [makeTrack(1, {
+        title: 'Long title '.repeat(200),
+        url: `https://example.test/${'x'.repeat(2000)}`
+    })];
+
+    const embed = queue.createQueueEmbed(1, 10).toJSON();
+    const field = embed.fields.find(entry => entry.name.startsWith('Queue ('));
+
+    assert.ok(field.value.length <= 1024, `queue field is ${field.value.length} characters`);
+    assert.match(field.value, /…$/);
+});
