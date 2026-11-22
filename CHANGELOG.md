@@ -59,6 +59,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `!np` / `!nowplaying` no longer throws `RangeError: Invalid count value: -1`
+  when the wall-clock playback position reaches or passes the track duration.
+  The progress marker is clamped to the last bar slot and the elapsed label is
+  capped at the duration, so a buffering or overlong stream shows a full bar
+  instead of the generic command error.
 - `!shuffle` / `/shuffle` and the panel's shuffle command now keep the
   currently playing track at the head of the queue and shuffle only the
   upcoming tracks. Previously the playing track was moved and left in the

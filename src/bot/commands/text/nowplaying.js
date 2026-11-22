@@ -25,18 +25,28 @@ module.exports = {
         }
 
         const track = queue.currentTrack;
-        const position = queue.getPosition();
+        const rawPosition = queue.getPosition();
         const duration = track.duration || 0;
-        
+        // The position is wall-clock based, so buffering or a stream that runs
+        // longer than its metadata can put it at or past the advertised
+        // duration. Clamp the label and the bar instead of asking
+        // String#repeat for a negative count.
+        const position = duration > 0
+            ? Math.min(Math.max(rawPosition, 0), duration)
+            : Math.max(rawPosition, 0);
+
         // Create progress bar
         const progressBarLength = 20;
-        const progress = duration > 0 ? Math.floor((position / duration) * progressBarLength) : 0;
+        const progress = duration > 0
+            ? Math.min(progressBarLength - 1, Math.floor((position / duration) * progressBarLength))
+            : 0;
         const progressBar = '▬'.repeat(progress) + '🔘' + '▬'.repeat(progressBarLength - progress - 1);
         
         // Format times
         const formatTime = (seconds) => {
-            const mins = Math.floor(seconds / 60);
-            const secs = seconds % 60;
+            const total = Math.max(0, Math.floor(seconds));
+            const mins = Math.floor(total / 60);
+            const secs = total % 60;
             return `${mins}:${secs.toString().padStart(2, '0')}`;
         };
 
