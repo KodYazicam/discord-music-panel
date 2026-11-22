@@ -323,10 +323,7 @@ class MusicQueue {
         
         // Queue
         if (this.tracks.length > 0) {
-            const queueList = this.tracks
-                .slice(start, end)
-                .map((track, index) => `**${start + index + 1}.** [${track.title}](${track.url}) - ${track.durationFormatted}`)
-                .join('\n');
+            const queueList = this.formatQueuePage(this.tracks.slice(start, end), start);
             
             embed.addFields({
                 name: `Queue (${this.tracks.length} tracks)`,
@@ -353,6 +350,66 @@ class MusicQueue {
         embed.addFields({ name: 'Volume', value: `${this.volume}%`, inline: true });
         
         return embed;
+    }
+
+    /**
+     * Render a queue page inside Discord's 1024-character embed field limit.
+     * Long pages keep whole entries and end with a visible "more tracks" marker.
+     */
+    formatQueuePage(tracks, startIndex, limit = 1024) {
+        const lines = [];
+        let length = 0;
+
+        for (let index = 0; index < tracks.length; index += 1) {
+            const line = this.formatQueueEntry(tracks[index], startIndex + index + 1, limit);
+            const separator = lines.length > 0 ? 1 : 0;
+
+            if (length + separator + line.length <= limit) {
+                lines.push(line);
+                length += separator + line.length;
+                continue;
+            }
+
+            const remaining = tracks.length - index;
+            const markerBudget = limit - length - separator;
+            if (markerBudget > 8) {
+                const marker = `…and ${remaining} more track${remaining === 1 ? '' : 's'} on this page`;
+                lines.push(this.truncate(marker, markerBudget));
+            }
+            break;
+        }
+
+        return lines.join('\n');
+    }
+
+    /**
+     * Render one queue entry, keeping the link when the title has to shrink.
+     */
+    formatQueueEntry(track, position, limit) {
+        const prefix = `**${position}.** `;
+        const duration = track.durationFormatted || 'Unknown';
+        const suffix = ` - ${duration}`;
+        const url = track.url || '';
+        const title = String(track.title || 'Unknown');
+        const overhead = prefix.length + suffix.length + 4; // []() around the link
+        const titleBudget = limit - overhead - url.length;
+        const line = titleBudget > 0
+            ? `${prefix}[${this.truncate(title, titleBudget)}](${url})${suffix}`
+            : '';
+
+        if (line && line.length <= limit) {
+            return line;
+        }
+
+        // A single oversized URL cannot keep its link; fall back to plain text.
+        return this.truncate(`${prefix}${title}${suffix}`, limit);
+    }
+
+    truncate(value, max) {
+        if (max <= 0) return '';
+        if (value.length <= max) return value;
+        if (max === 1) return '…';
+        return `${value.slice(0, max - 1).trimEnd()}…`;
     }
 
     /**
